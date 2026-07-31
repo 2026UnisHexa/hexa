@@ -34,12 +34,11 @@ function suggestChordsDevApi(): Plugin {
 
 export default defineConfig(({ mode }) => {
   // Merge .env / .env.local into process.env for the Node-only middleware.
+  // File values win so a stale shell OPENAI_API_KEY cannot override .env.local.
   // Non-VITE_ keys are never injected into the client bundle by Vite.
   const env = loadEnv(mode, process.cwd(), '')
   for (const [key, value] of Object.entries(env)) {
-    if (process.env[key] === undefined) {
-      process.env[key] = value
-    }
+    process.env[key] = value
   }
 
   return {
