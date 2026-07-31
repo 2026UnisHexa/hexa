@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { MarketplaceListing } from '../../types/listing'
+import { isOwnedBy } from '../../types/listing'
 import {
   playListingPreview,
   stopListingPreview,
@@ -7,6 +8,7 @@ import {
 
 type Props = {
   listings: MarketplaceListing[]
+  currentLoginId: string
 }
 
 function formatPrice(price: number): string {
@@ -66,9 +68,9 @@ function ListingCard({
   )
 }
 
-export function MarketplaceView({ listings }: Props) {
-  const mine = listings.filter((l) => l.mine)
-  const others = listings.filter((l) => !l.mine)
+export function MarketplaceView({ listings, currentLoginId }: Props) {
+  const mine = listings.filter((l) => isOwnedBy(l, currentLoginId))
+  const others = listings.filter((l) => !isOwnedBy(l, currentLoginId))
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [loadingId, setLoadingId] = useState<string | null>(null)
 

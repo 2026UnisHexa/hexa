@@ -52,6 +52,7 @@ import {
 import type { ChordSuggestion } from './types/chord'
 import type { GenreId } from './types/genre'
 import type { MarketplaceListing } from './types/listing'
+import { isOwnedBy } from './types/listing'
 import type { UserProfile } from './types/user'
 import { AUTH_LOGIN_KEY, USER_STORAGE_KEY } from './types/user'
 import { loadJson, saveJson } from './lib/storage'
@@ -80,42 +81,6 @@ function loadOrCreateProfile(): UserProfile {
 
 const SEED_LISTINGS: MarketplaceListing[] = [
   {
-    id: 'mine-seed-1',
-    title: '아침 창가 허밍',
-    price: 1500,
-    genreId: 'ballad',
-    genreLabel: '발라드',
-    chordLabel: '안정적인 팝 진행',
-    noteCount: 28,
-    tempoBpm: 76,
-    createdAt: '2026-07-30T08:20:00.000Z',
-    mine: true,
-  },
-  {
-    id: 'mine-seed-2',
-    title: '퇴근길 휘파람 멜로디',
-    price: 1800,
-    genreId: 'pop',
-    genreLabel: '팝',
-    chordLabel: '밝은 메이저 진행',
-    noteCount: 32,
-    tempoBpm: 108,
-    createdAt: '2026-07-31T19:05:00.000Z',
-    mine: true,
-  },
-  {
-    id: 'mine-seed-3',
-    title: '비 오는 오후 스케치',
-    price: 2200,
-    genreId: 'jazz',
-    genreLabel: '재즈',
-    chordLabel: '부드러운 진행',
-    noteCount: 40,
-    tempoBpm: 92,
-    createdAt: '2026-08-01T14:40:00.000Z',
-    mine: true,
-  },
-  {
     id: 'seed-1',
     title: '새벽 창가의 허밍',
     price: 1200,
@@ -126,6 +91,7 @@ const SEED_LISTINGS: MarketplaceListing[] = [
     tempoBpm: 72,
     createdAt: '2026-07-20T10:00:00.000Z',
     mine: false,
+    ownerId: null,
   },
   {
     id: 'seed-2',
@@ -138,6 +104,7 @@ const SEED_LISTINGS: MarketplaceListing[] = [
     tempoBpm: 96,
     createdAt: '2026-07-22T14:30:00.000Z',
     mine: false,
+    ownerId: null,
   },
   {
     id: 'seed-3',
@@ -150,6 +117,46 @@ const SEED_LISTINGS: MarketplaceListing[] = [
     tempoBpm: 110,
     createdAt: '2026-07-28T09:15:00.000Z',
     mine: false,
+    ownerId: null,
+  },
+  {
+    id: 'seed-4',
+    title: '아침 창가 허밍',
+    price: 1500,
+    genreId: 'ballad',
+    genreLabel: '발라드',
+    chordLabel: '안정적인 팝 진행',
+    noteCount: 28,
+    tempoBpm: 76,
+    createdAt: '2026-07-30T08:20:00.000Z',
+    mine: false,
+    ownerId: null,
+  },
+  {
+    id: 'seed-5',
+    title: '퇴근길 휘파람 멜로디',
+    price: 1800,
+    genreId: 'pop',
+    genreLabel: '팝',
+    chordLabel: '밝은 메이저 진행',
+    noteCount: 32,
+    tempoBpm: 108,
+    createdAt: '2026-07-31T19:05:00.000Z',
+    mine: false,
+    ownerId: null,
+  },
+  {
+    id: 'seed-6',
+    title: '비 오는 오후 스케치',
+    price: 2200,
+    genreId: 'jazz',
+    genreLabel: '재즈',
+    chordLabel: '부드러운 진행',
+    noteCount: 40,
+    tempoBpm: 92,
+    createdAt: '2026-08-01T14:40:00.000Z',
+    mine: false,
+    ownerId: null,
   },
 ]
 
@@ -175,7 +182,7 @@ export default function App() {
   const [suggestLoading, setSuggestLoading] = useState(false)
   const [genreId, setGenreId] = useState<GenreId>('pop')
   const [listings, setListings] = useLocalStorage<MarketplaceListing[]>(
-    'marketplace-listings-v2',
+    'marketplace-listings-v3',
     SEED_LISTINGS,
   )
   const [profile, setProfile] = useLocalStorage<UserProfile>(
@@ -271,6 +278,7 @@ export default function App() {
       tempoBpm,
       createdAt: new Date().toISOString(),
       mine: true,
+      ownerId: profile.loginId,
     }
 
     setListings((prev) => [listing, ...prev])
@@ -359,13 +367,16 @@ export default function App() {
         {view === 'voice' ? <VoiceLyricsView /> : null}
 
         {view === 'marketplace' ? (
-          <MarketplaceView listings={listings} />
+          <MarketplaceView
+            listings={listings}
+            currentLoginId={profile.loginId}
+          />
         ) : null}
 
         {view === 'mypage' ? (
           <MyPageView
             profile={profile}
-            listings={listings}
+            listings={listings.filter((l) => isOwnedBy(l, profile.loginId))}
             onProfileChange={setProfile}
             onUpdateListingPrice={(id, price) =>
               setListings((prev) =>

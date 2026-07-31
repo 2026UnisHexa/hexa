@@ -97,7 +97,7 @@ export function MyPageView({
   onOpenMarketplace,
   onLogout,
 }: Props) {
-  const mine = listings.filter((l) => l.mine)
+  const mine = listings
   const totalValue = mine.reduce((sum, l) => sum + l.price, 0)
 
   return (
