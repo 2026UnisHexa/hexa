@@ -609,10 +609,16 @@ export default function App() {
                 <button
                   type="button"
                   className="btn btn--primary"
-                  disabled={step >= 5 || (step === 1 && !hasMelody)}
-                  onClick={() => goToStep(Math.min(5, step + 1))}
+                  disabled={step === 1 && !hasMelody}
+                  onClick={() => {
+                    if (step >= 5) {
+                      navigate('mypage')
+                      return
+                    }
+                    goToStep(Math.min(5, step + 1))
+                  }}
                 >
-                  다음
+                  {step >= 5 ? '완료' : '다음'}
                 </button>
               </div>
             </div>
