@@ -57,6 +57,12 @@ import type { UserProfile } from './types/user'
 import { AUTH_LOGIN_KEY, USER_STORAGE_KEY } from './types/user'
 import { loadJson, saveJson } from './lib/storage'
 import { clearSession, getAccessToken, getStoredLoginId, readLoginIdFromToken } from './lib/auth'
+import {
+  deleteRemoteAudio,
+  isRemoteListingId,
+  listMyAudio,
+  uploadAudio,
+} from './lib/audioApi'
 
 type View = 'home' | 'create' | 'marketplace' | 'mypage' | 'voice'
 
@@ -194,6 +200,8 @@ export default function App() {
   const [listingTitle, setListingTitle] = useState('나의 허밍 멜로디')
   const [price, setPrice] = useState('1000')
   const [lastListedTitle, setLastListedTitle] = useState('나의 허밍 멜로디')
+  const [listingSaving, setListingSaving] = useState(false)
+  const [listingError, setListingError] = useState<string | null>(null)
   const [pipelineError, setPipelineError] = useState<string | null>(null)
   const processedBlobRef = useRef<Blob | null>(null)
 
@@ -217,6 +225,33 @@ export default function App() {
           },
     )
   }, [setProfile])
+
+  useEffect(() => {
+    if (!getAccessToken()) return
+
+    let cancelled = false
+    void (async () => {
+      try {
+        const mine = await listMyAudio()
+        if (cancelled) return
+        setListings((prev) => {
+          const others = prev.filter(
+            (l) => !isRemoteListingId(l.id) && !isOwnedBy(l, profile.loginId),
+          )
+          const seedOthers = SEED_LISTINGS.filter((s) =>
+            others.every((o) => o.id !== s.id),
+          )
+          return [...mine, ...others, ...seedOthers]
+        })
+      } catch (err) {
+        console.warn('[App] sync remote audio failed', err)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [profile.loginId, setListings])
 
   const tempoBpm = useMemo(
     () => estimateTempoBpm(pitch.notes),
@@ -254,29 +289,49 @@ export default function App() {
     window.location.assign('/login')
   }
 
-  function registerListing() {
+  async function registerListing() {
     const trimmed = listingTitle.trim()
     if (!trimmed || !hasMelody) return
 
-    const parsedPrice = Math.max(0, Number(price) || 0)
-    const listing: MarketplaceListing = {
-      id: `mine-${Date.now()}`,
-      title: trimmed,
-      price: parsedPrice,
-      genreId,
-      genreLabel: genrePreset.label,
-      chordLabel: selectedSuggestion?.label ?? null,
-      noteCount: pitch.notes.length,
-      tempoBpm,
-      createdAt: new Date().toISOString(),
-      mine: true,
-      ownerId: profile.loginId,
+    if (!recorder.audioBlob) {
+      setListingError('녹음 파일이 없습니다. step 1에서 다시 녹음해 주세요.')
+      return
+    }
+    if (!getAccessToken()) {
+      setListingError('로그인 후 등록할 수 있습니다.')
+      return
     }
 
-    setListings((prev) => [listing, ...prev])
-    setLastListedTitle(trimmed)
-    setPriceOpen(false)
-    setSuccessOpen(true)
+    const parsedPrice = Math.max(0, Number(price) || 0)
+    setListingSaving(true)
+    setListingError(null)
+
+    try {
+      const created = await uploadAudio({
+        title: trimmed,
+        price: parsedPrice,
+        genreLabel: genrePreset.label,
+        chordLabel: selectedSuggestion?.label ?? null,
+        tempoBpm,
+        noteCount: pitch.notes.length,
+        audioBlob: recorder.audioBlob,
+      })
+
+      setListings((prev) => [
+        created,
+        ...prev.filter((l) => l.id !== created.id),
+      ])
+      setLastListedTitle(trimmed)
+      setPriceOpen(false)
+      setSuccessOpen(true)
+    } catch (err) {
+      console.error('[App] registerListing failed', err)
+      setListingError(
+        err instanceof Error ? err.message : '등록에 실패했습니다.',
+      )
+    } finally {
+      setListingSaving(false)
+    }
   }
 
   useEffect(() => {
@@ -375,9 +430,24 @@ export default function App() {
                 prev.map((l) => (l.id === id ? { ...l, price } : l)),
               )
             }
-            onDeleteListing={(id) =>
-              setListings((prev) => prev.filter((l) => l.id !== id))
-            }
+            onDeleteListing={(id) => {
+              void (async () => {
+                try {
+                  if (isRemoteListingId(id)) {
+                    await deleteRemoteAudio(id)
+                  }
+                } catch (err) {
+                  console.warn('[App] delete remote audio failed', err)
+                  setPipelineError(
+                    err instanceof Error
+                      ? err.message
+                      : '서버에서 작품 삭제에 실패했습니다.',
+                  )
+                  return
+                }
+                setListings((prev) => prev.filter((l) => l.id !== id))
+              })()
+            }}
             onCreate={() => navigate('create')}
             onOpenMarketplace={() => navigate('marketplace')}
             onLogout={handleLogout}
@@ -623,6 +693,7 @@ export default function App() {
                           (prev) => prev.trim() || '나의 허밍 멜로디',
                         )
                         setPriceOpen(true)
+                        setListingError(null)
                       }}
                     />
                   </div>
@@ -662,10 +733,18 @@ export default function App() {
         open={priceOpen}
         title={listingTitle}
         price={price}
+        saving={listingSaving}
+        error={listingError}
         onTitleChange={setListingTitle}
         onPriceChange={setPrice}
-        onCancel={() => setPriceOpen(false)}
-        onSubmit={registerListing}
+        onCancel={() => {
+          if (listingSaving) return
+          setListingError(null)
+          setPriceOpen(false)
+        }}
+        onSubmit={() => {
+          void registerListing()
+        }}
       />
       <ListingSuccessModal
         open={successOpen}

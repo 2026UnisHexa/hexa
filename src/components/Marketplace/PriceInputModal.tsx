@@ -4,6 +4,8 @@ type Props = {
   open: boolean
   title: string
   price: string
+  saving?: boolean
+  error?: string | null
   onTitleChange: (value: string) => void
   onPriceChange: (value: string) => void
   onSubmit: () => void
@@ -14,6 +16,8 @@ export function PriceInputModal({
   open,
   title,
   price,
+  saving = false,
+  error = null,
   onTitleChange,
   onPriceChange,
   onSubmit,
@@ -34,12 +38,12 @@ export function PriceInputModal({
         method="dialog"
         onSubmit={(e) => {
           e.preventDefault()
-          onSubmit()
+          if (!saving) onSubmit()
         }}
       >
         <h2>마켓플레이스 등록</h2>
         <p className="muted">
-          작품이 마켓플레이스 목록에 추가됩니다. (이 기기에 저장)
+          서버(DB + Storage)에 녹음 파일을 올리고, 내 작품 목록에 추가합니다.
         </p>
         <div className="field">
           <label htmlFor="listing-title">제목</label>
@@ -51,6 +55,7 @@ export function PriceInputModal({
             placeholder="예: 새벽 창가의 허밍"
             required
             maxLength={60}
+            disabled={saving}
           />
         </div>
         <div className="field">
@@ -63,14 +68,25 @@ export function PriceInputModal({
             value={price}
             onChange={(e) => onPriceChange(e.target.value)}
             required
+            disabled={saving}
           />
         </div>
+        {error ? (
+          <p className="alert" role="alert">
+            {error}
+          </p>
+        ) : null}
         <div className="modal__actions">
-          <button type="button" className="btn btn--ghost" onClick={onCancel}>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={onCancel}
+            disabled={saving}
+          >
             취소
           </button>
-          <button type="submit" className="btn btn--primary">
-            등록
+          <button type="submit" className="btn btn--primary" disabled={saving}>
+            {saving ? '업로드 중…' : '등록'}
           </button>
         </div>
       </form>

@@ -14,6 +14,8 @@ export type MarketplaceListing = {
   mine: boolean
   /** login_id of the uploader; only this user sees it under "내가 올린 것" */
   ownerId?: string | null
+  /** Signed URL from backend GET/POST /audio (real recording) */
+  audioUrl?: string | null
 }
 
 export function isOwnedBy(

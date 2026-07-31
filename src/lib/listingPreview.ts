@@ -12,6 +12,8 @@ const MELODY_MOTIFS: number[][] = [
   [55, 60, 64, 67, 72, 67, 64, 60], // rising
 ]
 
+let remoteAudio: HTMLAudioElement | null = null
+
 function hashId(id: string): number {
   let h = 0
   for (let i = 0; i < id.length; i += 1) {
@@ -49,9 +51,31 @@ export function buildListingPreviewMelody(
   return notes
 }
 
+async function playRemoteAudio(url: string): Promise<void> {
+  stopListingPreview()
+  const audio = new Audio(url)
+  remoteAudio = audio
+  await new Promise<void>((resolve, reject) => {
+    audio.onended = () => {
+      if (remoteAudio === audio) remoteAudio = null
+      resolve()
+    }
+    audio.onerror = () => {
+      if (remoteAudio === audio) remoteAudio = null
+      reject(new Error('음원 재생에 실패했습니다.'))
+    }
+    void audio.play().catch(reject)
+  })
+}
+
 export async function playListingPreview(
   listing: MarketplaceListing,
 ): Promise<void> {
+  if (listing.audioUrl) {
+    await playRemoteAudio(listing.audioUrl)
+    return
+  }
+
   const preset = getGenrePreset(listing.genreId)
   const melody = buildListingPreviewMelody(listing)
   const chords = pickChords(listing)
@@ -59,5 +83,10 @@ export async function playListingPreview(
 }
 
 export function stopListingPreview(): void {
+  if (remoteAudio) {
+    remoteAudio.pause()
+    remoteAudio.src = ''
+    remoteAudio = null
+  }
   stopPlayback()
 }
