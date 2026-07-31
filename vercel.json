@@ -9,6 +9,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/home",
+      "destination": "/index.html"
+    },
+    {
       "source": "/favicon.ico",
       "destination": "/favicon.svg"
     }
