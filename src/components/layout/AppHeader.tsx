@@ -19,7 +19,12 @@ export function AppHeader({
         onClick={() => onNavigate('home')}
         aria-label="흥얼 홈"
       >
-        흥얼
+        <img
+          className="app-header__logo"
+          src="/heungeol-logo.png"
+          alt="흥얼"
+          draggable={false}
+        />
       </button>
 
       <nav className="app-header__nav" aria-label="주요 메뉴">
