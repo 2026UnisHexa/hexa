@@ -6,28 +6,32 @@
 import OpenAI from 'openai'
 
 const MAX_MELODY_SUMMARY_LENGTH = 2000
+const MAX_NOTE_COUNT = 24
 
 // 필요시 모델명 변경 가능
 const OPENAI_MODEL = 'gpt-4o-mini'
 
-const SYSTEM_PROMPT = `You are a music theory assistant. Given a melody summary, suggest exactly 3 chord progressions that fit it.
+const SYSTEM_PROMPT = `You are a music theory assistant. Given a melody summary and a required chord count N, suggest exactly 3 chord progressions that fit the melody.
 Prefer diatonic chords.
-8~16마디 분량의 코드 진행을 3개 제안해줘. 각 진행은 최소 8개 코드로 구성하고, 단순 반복이 아니라 자연스러운 전개(예: 도입-전개-변화-마무리)가 느껴지도록 만들어줘.
+코드 진행은 반드시 입력된 노트 개수(N)와 정확히 동일한 길이로 생성할 것. 3개의 후보 모두 코드 개수가 N개로 통일되어야 함.
+단순 반복이 아니라 자연스러운 전개(예: 도입-전개-변화-마무리)가 느껴지도록 만들어줘.
 반드시 JSON만 출력, 다른 설명 텍스트 없이.
 Return a JSON object with this exact shape:
 {"suggestions":[{"label":string,"chords":[{"name":string,"notes":string[]}]}]}
-Example: {"suggestions":[{"label":"안정적인 팝 진행","chords":[{"name":"C","notes":["C4","E4","G4"]},{"name":"Am","notes":["A3","C4","E4"]},{"name":"F","notes":["F3","A3","C4"]},{"name":"G","notes":["G3","B3","D4"]},{"name":"Am","notes":["A3","C4","E4"]},{"name":"F","notes":["F3","A3","C4"]},{"name":"C","notes":["C4","E4","G4"]},{"name":"G","notes":["G3","B3","D4"]}]}]}`
+Each chords array MUST contain exactly N items.`
 
 /**
  * @param {unknown} body
- * @returns {{ ok: true, melodySummary: string } | { ok: false, status: number, error: string }}
+ * @returns {{ ok: true, melodySummary: string, noteCount: number } | { ok: false, status: number, error: string }}
  */
 export function validateSuggestChordsBody(body) {
   if (body === null || typeof body !== 'object' || Array.isArray(body)) {
     return { ok: false, status: 400, error: 'Request body must be a JSON object' }
   }
 
-  const { melodySummary } = /** @type {Record<string, unknown>} */ (body)
+  const { melodySummary, noteCount } = /** @type {Record<string, unknown>} */ (
+    body
+  )
 
   if (typeof melodySummary !== 'string') {
     return {
@@ -54,18 +58,78 @@ export function validateSuggestChordsBody(body) {
     }
   }
 
-  return { ok: true, melodySummary: trimmed }
+  let n = MAX_NOTE_COUNT
+  if (typeof noteCount === 'number' && Number.isFinite(noteCount)) {
+    n = Math.min(MAX_NOTE_COUNT, Math.max(1, Math.round(noteCount)))
+  } else {
+    const match = trimmed.match(/noteCount\s+(\d+)/i)
+    if (match) {
+      n = Math.min(MAX_NOTE_COUNT, Math.max(1, Number(match[1])))
+    }
+  }
+
+  return { ok: true, melodySummary: trimmed, noteCount: n }
+}
+
+/**
+ * Truncate if longer; pad with last chord if shorter.
+ * @param {unknown[]} chords
+ * @param {number} n
+ */
+function fitChordsToLength(chords, n) {
+  if (!Array.isArray(chords) || n <= 0) return []
+  const valid = chords.filter(
+    (c) =>
+      c &&
+      typeof c === 'object' &&
+      typeof /** @type {{name?: unknown}} */ (c).name === 'string' &&
+      Array.isArray(/** @type {{notes?: unknown}} */ (c).notes),
+  )
+  if (valid.length === 0) return []
+  if (valid.length === n) return valid
+  if (valid.length > n) return valid.slice(0, n)
+  const out = [...valid]
+  const last = valid[valid.length - 1]
+  while (out.length < n) out.push(last)
+  return out
+}
+
+/**
+ * @param {unknown} suggestions
+ * @param {number} noteCount
+ */
+function normalizeSuggestionsPayload(suggestions, noteCount) {
+  if (!Array.isArray(suggestions)) return []
+  return suggestions.slice(0, 3).map((s) => {
+    if (!s || typeof s !== 'object') return s
+    const item = /** @type {{ label?: unknown, chords?: unknown }} */ (s)
+    return {
+      ...item,
+      chords: fitChordsToLength(
+        Array.isArray(item.chords) ? item.chords : [],
+        noteCount,
+      ),
+    }
+  })
 }
 
 /**
  * @param {string} melodySummary
+ * @param {number} noteCount
  * @param {string} apiKey
  * @returns {Promise<string>} raw JSON text (array of suggestions) for the frontend parser
  */
-export async function callOpenAIForChords(melodySummary, apiKey) {
-  const userPrompt = `Melody summary:\n${melodySummary}\n\n8~16마디 분량의 코드 진행을 3개 제안해줘. 각 진행은 최소 8개 코드로 구성하고, 단순 반복이 아니라 자연스러운 전개(예: 도입-전개-변화-마무리)가 느껴지도록 만들어줘.\n반드시 JSON만 출력, 다른 설명 텍스트 없이. Return {"suggestions":[...]} with exactly 3 items.`
+export async function callOpenAIForChords(melodySummary, noteCount, apiKey) {
+  const n = noteCount
+  const userPrompt = `다음은 ${n}개의 음으로 구성된 멜로디입니다. 정확히 ${n}개의 코드로 구성된 진행을 3가지 제안해주세요.
+코드 진행은 반드시 입력된 노트 개수(${n})와 정확히 동일한 길이로 생성할 것. 3개의 후보 모두 코드 개수가 ${n}개로 통일되어야 함.
 
-  console.log('[api/suggest-chords] OpenAI user prompt melodySummary:', melodySummary)
+Melody summary:
+${melodySummary}
+
+반드시 JSON만 출력, 다른 설명 텍스트 없이. Return {"suggestions":[...]} with exactly 3 items, each with exactly ${n} chords.`
+
+  console.log('[api/suggest-chords] OpenAI prompt', { noteCount: n, melodySummary })
 
   const client = new OpenAI({ apiKey })
 
@@ -91,19 +155,27 @@ export async function callOpenAIForChords(melodySummary, apiKey) {
     throw new Error('OpenAI API returned invalid JSON')
   }
 
+  let suggestions
   if (Array.isArray(parsed)) {
-    return JSON.stringify(parsed)
-  }
-
-  if (
+    suggestions = parsed
+  } else if (
     parsed &&
     typeof parsed === 'object' &&
     Array.isArray(parsed.suggestions)
   ) {
-    return JSON.stringify(parsed.suggestions)
+    suggestions = parsed.suggestions
+  } else {
+    throw new Error('OpenAI JSON missing suggestions array')
   }
 
-  throw new Error('OpenAI JSON missing suggestions array')
+  const normalized = normalizeSuggestionsPayload(suggestions, n)
+  console.log('[api/suggest-chords] normalized chord lengths', {
+    noteCount: n,
+    lengths: normalized.map(
+      (s) => (s && typeof s === 'object' && Array.isArray(s.chords) ? s.chords.length : 0),
+    ),
+  })
+  return JSON.stringify(normalized)
 }
 
 /**
@@ -158,7 +230,11 @@ export async function handleSuggestChords(req, res) {
       return
     }
 
-    const raw = await callOpenAIForChords(validated.melodySummary, apiKey.trim())
+    const raw = await callOpenAIForChords(
+      validated.melodySummary,
+      validated.noteCount,
+      apiKey.trim(),
+    )
     res.statusCode = 200
     res.end(JSON.stringify({ raw }))
   } catch (err) {

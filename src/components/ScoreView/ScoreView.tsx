@@ -4,17 +4,15 @@ import { OpenSheetMusicDisplay } from 'opensheetmusicdisplay'
 type Props = {
   musicXml: string | null
   hasMelody?: boolean
-  playing?: boolean
-  onPlayMelody?: () => void
-  onStop?: () => void
+  isPlayingMelody?: boolean
+  onToggleMelody?: () => void
 }
 
 export function ScoreView({
   musicXml,
   hasMelody = false,
-  playing = false,
-  onPlayMelody,
-  onStop,
+  isPlayingMelody = false,
+  onToggleMelody,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const osmdRef = useRef<OpenSheetMusicDisplay | null>(null)
@@ -59,17 +57,16 @@ export function ScoreView({
   return (
     <section>
       <h2>2. 악보</h2>
-      {onPlayMelody ? (
+      {onToggleMelody ? (
         <p>
           <button
             type="button"
-            onClick={onPlayMelody}
-            disabled={!hasMelody || playing}
+            onClick={onToggleMelody}
+            disabled={!hasMelody}
           >
-            {playing ? '⏸ 재생 중...' : '▶ 인식된 멜로디 듣기'}
-          </button>{' '}
-          <button type="button" onClick={onStop} disabled={!playing}>
-            ⏹ 정지
+            {isPlayingMelody
+              ? '⏹ 정지'
+              : '▶ 인식된 멜로디 듣기'}
           </button>
         </p>
       ) : null}

@@ -17,7 +17,11 @@ import { suggestChordProgressions } from './lib/claude'
 import { melodyNotesToMusicXml } from './lib/midiToMusicXml'
 import { downloadBlob, melodyNotesToMidiBlob } from './lib/midiDownload'
 import { getGenrePreset } from './lib/presets'
-import { estimateTempoBpm, summarizeMelody } from './utils/melodySummary'
+import {
+  estimateTempoBpm,
+  melodySummaryNoteCount,
+  summarizeMelody,
+} from './utils/melodySummary'
 import type { ChordSuggestion } from './types/chord'
 import type { GenreId } from './types/genre'
 
@@ -26,9 +30,13 @@ export default function App() {
   const pitch = useBasicPitch()
   const playback = usePlayback()
   const chordPlayback = useChordPlayback()
+  const stopChords = chordPlayback.stop
 
   const [suggestions, setSuggestions] = useState<ChordSuggestion[]>([])
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [playingChordIndex, setPlayingChordIndex] = useState<number | null>(
+    null,
+  )
   const [suggestLoading, setSuggestLoading] = useState(false)
   const [genreId, setGenreId] = useState<GenreId>('pop')
   const [priceOpen, setPriceOpen] = useState(false)
@@ -50,6 +58,14 @@ export default function App() {
   const selectedSuggestion = suggestions[selectedIndex] ?? null
   const genrePreset = getGenrePreset(genreId)
   const hasMelody = pitch.notes.length > 0
+  const isPlayingMelody = playback.playing
+  const isPlayingChords = chordPlayback.playing
+
+  useEffect(() => {
+    if (!isPlayingChords) {
+      setPlayingChordIndex(null)
+    }
+  }, [isPlayingChords])
 
   useEffect(() => {
     if (recorder.status !== 'stopped' || !recorder.audioBlob) return
@@ -63,15 +79,19 @@ export default function App() {
       setPipelineError(null)
       setSuggestions([])
       setSelectedIndex(0)
+      stopChords()
+      setPlayingChordIndex(null)
 
       const notes = await pitch.transcribe(blob)
       if (cancelled || notes.length === 0) return
 
       setSuggestLoading(true)
       try {
-        const summary = summarizeMelody(notes, estimateTempoBpm(notes))
-        console.log('[App] melody summary', summary)
-        const result = await suggestChordProgressions(summary)
+        const bpm = estimateTempoBpm(notes)
+        const noteCount = melodySummaryNoteCount(notes)
+        const summary = summarizeMelody(notes, bpm)
+        console.log('[App] melody summary', { summary, noteCount })
+        const result = await suggestChordProgressions(summary, noteCount)
         if (!cancelled) {
           setSuggestions(result)
           setSelectedIndex(0)
@@ -93,7 +113,7 @@ export default function App() {
     return () => {
       cancelled = true
     }
-  }, [recorder.status, recorder.audioBlob, pitch.transcribe])
+  }, [recorder.status, recorder.audioBlob, pitch.transcribe, stopChords])
 
   return (
     <main>
@@ -130,24 +150,32 @@ export default function App() {
       <ScoreView
         musicXml={musicXml}
         hasMelody={hasMelody}
-        playing={playback.playing}
-        onPlayMelody={() => void playback.playNotes(pitch.notes)}
-        onStop={playback.stop}
+        isPlayingMelody={isPlayingMelody}
+        onToggleMelody={() => playback.toggleMelody(pitch.notes)}
       />
 
       <ChordSuggestions
         suggestions={suggestions}
         selectedIndex={selectedIndex}
         loading={suggestLoading}
-        onSelect={setSelectedIndex}
-        onPlay={(i) => {
+        playingIndex={isPlayingChords ? playingChordIndex : null}
+        onSelect={(i) => {
+          if (isPlayingChords) chordPlayback.stop()
+          setPlayingChordIndex(null)
+          setSelectedIndex(i)
+        }}
+        onTogglePlay={(i) => {
+          if (isPlayingChords && playingChordIndex === i) {
+            chordPlayback.stop()
+            setPlayingChordIndex(null)
+            return
+          }
           const s = suggestions[i]
           if (!s) return
+          setSelectedIndex(i)
+          setPlayingChordIndex(i)
           void chordPlayback.play(s.chords, genrePreset.chordDurationSeconds)
         }}
-        onStop={chordPlayback.stop}
-        playing={chordPlayback.playing}
-        playDisabled={chordPlayback.playing}
       />
 
       <GenrePreset value={genreId} onChange={setGenreId} />
@@ -155,17 +183,19 @@ export default function App() {
       <PlaybackControls
         melodyDisabled={!hasMelody}
         accompanimentDisabled={!hasMelody || !selectedSuggestion}
-        playing={playback.playing}
-        onPlayMelody={() => void playback.playNotes(pitch.notes)}
-        onPlayWithAccompaniment={() => {
-          if (!selectedSuggestion) return
-          void playback.playWithAccompaniment(
+        playing={isPlayingMelody}
+        onToggleMelody={() => playback.toggleMelody(pitch.notes)}
+        onToggleWithAccompaniment={() => {
+          if (!selectedSuggestion) {
+            if (isPlayingMelody) playback.stop()
+            return
+          }
+          playback.toggleWithAccompaniment(
             pitch.notes,
             selectedSuggestion.chords,
             genrePreset,
           )
         }}
-        onStop={playback.stop}
       />
 
       <DownloadButtons

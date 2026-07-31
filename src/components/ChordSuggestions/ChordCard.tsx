@@ -4,16 +4,16 @@ type Props = {
   suggestion: ChordSuggestion
   selected: boolean
   onSelect: () => void
-  onPlay: () => void
-  playDisabled: boolean
+  onTogglePlay: () => void
+  isPlaying: boolean
 }
 
 export function ChordCard({
   suggestion,
   selected,
   onSelect,
-  onPlay,
-  playDisabled,
+  onTogglePlay,
+  isPlaying,
 }: Props) {
   const chordNames = suggestion.chords.map((c) => c.name).join(' – ')
 
@@ -30,8 +30,8 @@ export function ChordCard({
       </label>
       <div>
         {chordNames}{' '}
-        <button type="button" onClick={onPlay} disabled={playDisabled}>
-          ▶
+        <button type="button" onClick={onTogglePlay}>
+          {isPlaying ? '⏹' : '▶'}
         </button>
       </div>
       <ul>

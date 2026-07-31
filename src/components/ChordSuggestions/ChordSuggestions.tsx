@@ -5,22 +5,18 @@ type Props = {
   suggestions: ChordSuggestion[]
   selectedIndex: number
   loading: boolean
+  playingIndex: number | null
   onSelect: (index: number) => void
-  onPlay: (index: number) => void
-  onStop: () => void
-  playing: boolean
-  playDisabled: boolean
+  onTogglePlay: (index: number) => void
 }
 
 export function ChordSuggestions({
   suggestions,
   selectedIndex,
   loading,
+  playingIndex,
   onSelect,
-  onPlay,
-  onStop,
-  playing,
-  playDisabled,
+  onTogglePlay,
 }: Props) {
   return (
     <section>
@@ -29,14 +25,6 @@ export function ChordSuggestions({
       {suggestions.length === 0 && !loading ? (
         <p>멜로디 인식 후 자동으로 제안됩니다.</p>
       ) : null}
-      {suggestions.length > 0 ? (
-        <p>
-          <button type="button" onClick={onStop} disabled={!playing}>
-            ⏹ 정지
-          </button>
-          {playing ? ' 재생 중…' : null}
-        </p>
-      ) : null}
       <ul>
         {suggestions.map((s, i) => (
           <ChordCard
@@ -44,8 +32,8 @@ export function ChordSuggestions({
             suggestion={s}
             selected={selectedIndex === i}
             onSelect={() => onSelect(i)}
-            onPlay={() => onPlay(i)}
-            playDisabled={playDisabled}
+            onTogglePlay={() => onTogglePlay(i)}
+            isPlaying={playingIndex === i}
           />
         ))}
       </ul>
