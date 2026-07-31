@@ -19,6 +19,7 @@ import { LoadingState } from './components/common/LoadingState'
 import { ErrorMessage } from './components/common/ErrorMessage'
 import { useRecorder } from './hooks/useRecorder'
 import { useBasicPitch } from './hooks/useBasicPitch'
+import { useLocalStorage } from './hooks/useLocalStorage'
 import {
   useChordPlayback,
   useInstrument,
@@ -47,8 +48,48 @@ import {
 } from './utils/melodySummary'
 import type { ChordSuggestion } from './types/chord'
 import type { GenreId } from './types/genre'
+import type { MarketplaceListing } from './types/listing'
 
 type View = 'home' | 'create' | 'marketplace'
+
+const SEED_LISTINGS: MarketplaceListing[] = [
+  {
+    id: 'seed-1',
+    title: '새벽 창가의 허밍',
+    price: 1200,
+    genreId: 'ballad',
+    genreLabel: '발라드',
+    chordLabel: '감성 진행',
+    noteCount: 24,
+    tempoBpm: 72,
+    createdAt: '2026-07-20T10:00:00.000Z',
+    mine: false,
+  },
+  {
+    id: 'seed-2',
+    title: '비 오는 날의 리프',
+    price: 2000,
+    genreId: 'jazz',
+    genreLabel: '재즈',
+    chordLabel: '재즈 II-V-I',
+    noteCount: 36,
+    tempoBpm: 96,
+    createdAt: '2026-07-22T14:30:00.000Z',
+    mine: false,
+  },
+  {
+    id: 'seed-3',
+    title: '버스 정류장 멜로디',
+    price: 900,
+    genreId: 'pop',
+    genreLabel: '팝',
+    chordLabel: '팝 진행',
+    noteCount: 18,
+    tempoBpm: 110,
+    createdAt: '2026-07-28T09:15:00.000Z',
+    mine: false,
+  },
+]
 
 export default function App() {
   const [view, setView] = useState<View>('home')
@@ -71,9 +112,15 @@ export default function App() {
   )
   const [suggestLoading, setSuggestLoading] = useState(false)
   const [genreId, setGenreId] = useState<GenreId>('pop')
+  const [listings, setListings] = useLocalStorage<MarketplaceListing[]>(
+    'marketplace-listings',
+    SEED_LISTINGS,
+  )
   const [priceOpen, setPriceOpen] = useState(false)
   const [successOpen, setSuccessOpen] = useState(false)
+  const [listingTitle, setListingTitle] = useState('나의 허밍 멜로디')
   const [price, setPrice] = useState('1000')
+  const [lastListedTitle, setLastListedTitle] = useState('나의 허밍 멜로디')
   const [pipelineError, setPipelineError] = useState<string | null>(null)
   const processedBlobRef = useRef<Blob | null>(null)
 
@@ -106,6 +153,30 @@ export default function App() {
       setStep((s) => s)
       setMaxReached((m) => Math.max(m, 1))
     }
+  }
+
+  function registerListing() {
+    const trimmed = listingTitle.trim()
+    if (!trimmed || !hasMelody) return
+
+    const parsedPrice = Math.max(0, Number(price) || 0)
+    const listing: MarketplaceListing = {
+      id: `mine-${Date.now()}`,
+      title: trimmed,
+      price: parsedPrice,
+      genreId,
+      genreLabel: genrePreset.label,
+      chordLabel: selectedSuggestion?.label ?? null,
+      noteCount: pitch.notes.length,
+      tempoBpm,
+      createdAt: new Date().toISOString(),
+      mine: true,
+    }
+
+    setListings((prev) => [listing, ...prev])
+    setLastListedTitle(trimmed)
+    setPriceOpen(false)
+    setSuccessOpen(true)
   }
 
   useEffect(() => {
@@ -178,7 +249,10 @@ export default function App() {
         ) : null}
 
         {view === 'marketplace' ? (
-          <MarketplaceView onCreate={() => navigate('create')} />
+          <MarketplaceView
+            listings={listings}
+            onCreate={() => navigate('create')}
+          />
         ) : null}
 
         {view === 'create' ? (
@@ -401,7 +475,12 @@ export default function App() {
                     />
                     <ListForSaleButton
                       disabled={!hasMelody}
-                      onClick={() => setPriceOpen(true)}
+                      onClick={() => {
+                        setListingTitle(
+                          (prev) => prev.trim() || '나의 허밍 멜로디',
+                        )
+                        setPriceOpen(true)
+                      }}
                     />
                   </div>
                 </>
@@ -432,18 +511,22 @@ export default function App() {
 
       <PriceInputModal
         open={priceOpen}
+        title={listingTitle}
         price={price}
+        onTitleChange={setListingTitle}
         onPriceChange={setPrice}
         onCancel={() => setPriceOpen(false)}
-        onSubmit={() => {
-          setPriceOpen(false)
-          setSuccessOpen(true)
-        }}
+        onSubmit={registerListing}
       />
       <ListingSuccessModal
         open={successOpen}
+        title={lastListedTitle}
         price={price}
         onClose={() => setSuccessOpen(false)}
+        onGoToMarketplace={() => {
+          setSuccessOpen(false)
+          navigate('marketplace')
+        }}
       />
     </div>
   )
