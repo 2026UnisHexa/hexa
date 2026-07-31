@@ -12,7 +12,9 @@ type AuthPageProps = {
   initialSignupOpen?: boolean
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/$/, '') ||
+  'https://hexa-backend-68mi.onrender.com'
 
 function BrandMark() {
   return (
@@ -131,10 +133,10 @@ export function AuthPage({ onAuthenticated, initialSignupOpen = false }: AuthPag
 
   return (
     <main className="auth-page">
-      <section className="auth-visual" aria-label="Hexa 서비스 소개">
+      <section className="auth-visual" aria-label="흥얼 서비스 소개">
         <div className="auth-visual__blob auth-visual__blob--one" />
         <div className="auth-visual__blob auth-visual__blob--two" />
-        <div className="brand brand--light"><span className="brand__mark"><BrandMark /></span><span>HEXA</span></div>
+        <div className="brand brand--light"><span className="brand__mark"><BrandMark /></span><span>흥얼</span></div>
         <div className="auth-visual__copy">
           <span className="auth-visual__eyebrow">MAKE YOUR SOUND VISIBLE</span>
           <h1>머릿속 멜로디를<br />음악으로 완성하세요.</h1>
@@ -143,14 +145,14 @@ export function AuthPage({ onAuthenticated, initialSignupOpen = false }: AuthPag
         <div className="sound-wave" aria-hidden="true">
           {[28, 48, 72, 44, 92, 62, 34, 78, 54, 30, 64, 42, 24].map((height, index) => <span key={index} style={{ height }} />)}
         </div>
-        <p className="auth-visual__footer">© 2026 HEXA. CREATE YOUR OWN MUSIC.</p>
+        <p className="auth-visual__footer">© 2026 흥얼. CREATE YOUR OWN MUSIC.</p>
       </section>
 
       <section className="auth-form-panel">
-        <div className="brand brand--mobile"><span className="brand__mark"><BrandMark /></span><span>HEXA</span></div>
+        <div className="brand brand--mobile"><span className="brand__mark"><BrandMark /></span><span>흥얼</span></div>
         <div className="auth-card">
           <div className="auth-card__heading">
-            <p className="auth-card__kicker">WELCOME TO HEXA</p>
+            <p className="auth-card__kicker">WELCOME TO 흥얼</p>
             <h2>다시 만나서 반가워요</h2>
             <p>계정에 로그인하고 음악을 이어서 만들어 보세요.</p>
           </div>
@@ -177,7 +179,7 @@ export function AuthPage({ onAuthenticated, initialSignupOpen = false }: AuthPag
             <button className="signup-modal__close" type="button" onClick={() => setSignupOpen(false)} disabled={signupLoading} aria-label="회원가입 닫기">×</button>
             <div className="signup-modal__header">
               <span className="brand__mark"><BrandMark /></span>
-              <div><p>JOIN HEXA</p><h2 id="signup-title">새로운 음악 여정을 시작해요</h2><span>간단한 정보로 나만의 계정을 만들어 보세요.</span></div>
+              <div><p>JOIN 흥얼</p><h2 id="signup-title">새로운 음악 여정을 시작해요</h2><span>간단한 정보로 나만의 계정을 만들어 보세요.</span></div>
             </div>
             <form className="auth-form signup-form" onSubmit={handleSignup}>
               <label><span>아이디</span><input autoFocus autoComplete="username" value={signupId} onChange={(event) => setSignupId(event.target.value)} placeholder="사용할 아이디를 입력해 주세요" /></label>
