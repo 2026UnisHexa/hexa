@@ -52,11 +52,16 @@ export function parseChordSuggestions(raw: string): ChordSuggestion[] {
   }
 }
 
+/**
+ * Ask the backend (/api/suggest-chords) for chord progressions.
+ * Never calls Anthropic from the browser; API keys stay server-side.
+ * On any failure, returns hardcoded fallback progressions.
+ */
 export async function suggestChordProgressions(
   melodySummary: string,
 ): Promise<ChordSuggestion[]> {
   try {
-    const res = await fetch('/api/chords', {
+    const res = await fetch('/api/suggest-chords', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ melodySummary }),

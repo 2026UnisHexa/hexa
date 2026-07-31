@@ -118,7 +118,9 @@ hexa/
 │   └── utils/
 │       └── melodySummary.ts     # MIDI → Claude 프롬프트용 텍스트 요약
 │
-├── .env.example                 # VITE_ANTHROPIC_API_KEY 등
+├── api/
+│   └── suggest-chords.js        # Vercel 서버리스 — Claude 호출 (키는 서버만)
+├── .env.example                 # ANTHROPIC_API_KEY (VITE_ 접두사 금지)
 ├── index.html
 ├── package.json
 ├── vite.config.ts
@@ -134,7 +136,8 @@ hexa/
 | `ScoreView` | MusicXML 기반 오선보 표시 (VexFlow / OSMD) |
 | `PlaybackControls` | 멜로디(+반주) MIDI 미리듣기 |
 | `ChordSuggestions` / `ChordCard` | JSON 제안 3개를 카드로 표시·선택, 각 카드에 ▶ 재생 |
-| `claude` + `chordFallback` | JSON 전용 프롬프트, try-catch 파싱, 실패 시 C-Am-F-G 등 fallback |
+| `api/suggest-chords` | 서버에서만 Claude 호출 (`ANTHROPIC_API_KEY`). 프론트는 `/api/suggest-chords`만 fetch |
+| `claude` + `chordFallback` | 서버 응답 JSON 파싱, 실패 시 C-Am-F-G 등 fallback (키 없음) |
 | `chordPlayback` / `useChordPlayback` | Tone.js Sampler(피아노) 우선, 불가 시 PolySynth로 코드 진행 순차 재생 |
 | `GenrePreset` | 발라드/재즈/팝 등 반주 스타일 선택 |
 | `accompaniment` + `presets/*` | 코드 진행에 프리셋 보이싱·리듬 매핑 |
@@ -221,6 +224,7 @@ hexa/
 | Basic Pitch가 화음/노이즈에 오작동 | **단음 허밍만 지원**한다고 명확히 안내 |
 | Claude 응답이 JSON이 아니거나 파싱 실패 | try-catch + 하드코딩 fallback (C–Am–F–G). 데모 화면 중단 금지 |
 | Claude 코드 진행이 음악적으로 이상함 | 프롬프트에 다이아토닉 코드 등 음악 이론 제약 명시 |
+| `/api/suggest-chords`에 rate limit 없음 (MVP) | 남용·비용 폭주 가능. 데모 후 Vercel KV/Upstash 등으로 제한 추가 예정. 지금은 구현하지 않음 |
 | 시간 부족 | Magenta.js 자동 반주 → 장르 프리셋 다양화 → UI 폴리싱 순으로 쳐냄. **핵심(녹음→악보→코드 제안)은 반드시 완성** |
 
 ---
@@ -240,8 +244,9 @@ hexa/
 
 ```bash
 npm install
-cp .env.example .env   # Claude API 키 설정
+cp .env.example .env.local   # ANTHROPIC_API_KEY만 설정 (VITE_ 접두사 금지)
 npm run dev
 ```
 
-배포는 Vercel 또는 Netlify에 프론트엔드만 연결하면 된다. (서버 DB 없음)
+Vercel 배포 시 Project Settings → Environment Variables에 `ANTHROPIC_API_KEY`를 등록한다.  
+코드 진행 제안은 `api/suggest-chords` 서버리스 함수를 통하며, 브라우저에는 API 키가 내려가지 않는다. (서버 DB 없음)
