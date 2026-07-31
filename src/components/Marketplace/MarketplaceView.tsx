@@ -1,4 +1,9 @@
+import { useEffect, useState } from 'react'
 import type { MarketplaceListing } from '../../types/listing'
+import {
+  playListingPreview,
+  stopListingPreview,
+} from '../../lib/listingPreview'
 
 type Props = {
   listings: MarketplaceListing[]
@@ -21,15 +26,86 @@ function formatDate(iso: string): string {
   }
 }
 
+function ListingCard({
+  item,
+  mine,
+  playing,
+  loading,
+  onToggle,
+}: {
+  item: MarketplaceListing
+  mine?: boolean
+  playing: boolean
+  loading: boolean
+  onToggle: () => void
+}) {
+  return (
+    <article
+      className={`market-card${mine ? ' market-card--mine' : ''}${playing ? ' is-playing' : ''}`}
+    >
+      <span className="market-card__badge">{item.genreLabel}</span>
+      <h3>{item.title}</h3>
+      <p className="market-card__price">{formatPrice(item.price)}</p>
+      <p className="market-card__meta">
+        {item.chordLabel ? `코드: ${item.chordLabel} · ` : null}
+        {item.tempoBpm} BPM
+        {mine ? ` · 노트 ${item.noteCount}개 · ${formatDate(item.createdAt)}` : null}
+      </p>
+      <div className="market-card__actions">
+        <button
+          type="button"
+          className={`btn ${playing ? 'btn--secondary' : 'btn--primary'}`}
+          onClick={onToggle}
+          disabled={loading && !playing}
+        >
+          {loading && !playing ? '준비 중…' : playing ? '정지' : '미리듣기'}
+        </button>
+        <span className="market-card__hint">데모 음원 (실제 녹음 없음)</span>
+      </div>
+    </article>
+  )
+}
+
 export function MarketplaceView({ listings }: Props) {
   const mine = listings.filter((l) => l.mine)
   const others = listings.filter((l) => !l.mine)
+  const [playingId, setPlayingId] = useState<string | null>(null)
+  const [loadingId, setLoadingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    return () => {
+      stopListingPreview()
+    }
+  }, [])
+
+  async function togglePlay(item: MarketplaceListing) {
+    if (playingId === item.id) {
+      stopListingPreview()
+      setPlayingId(null)
+      setLoadingId(null)
+      return
+    }
+
+    stopListingPreview()
+    setPlayingId(null)
+    setLoadingId(item.id)
+    try {
+      setPlayingId(item.id)
+      await playListingPreview(item)
+    } catch (err) {
+      console.warn('[MarketplaceView] preview failed', err)
+    } finally {
+      setLoadingId(null)
+      setPlayingId((current) => (current === item.id ? null : current))
+    }
+  }
 
   return (
     <section className="marketplace" data-node-id="6:73">
       <h1 className="marketplace__title">마켓플레이스</h1>
       <p className="muted">
-        내가 올린 작품과 다른 사용자의 멜로디를 둘러볼 수 있어요.
+        카드를 눌러 데모 미리듣기를 재생할 수 있어요. (실제 녹음 파일은 없고,
+        장르·템포 기반 합성 미리듣기입니다)
       </p>
 
       <h2 className="marketplace__section-title">내가 올린 것 ({mine.length})</h2>
@@ -38,15 +114,14 @@ export function MarketplaceView({ listings }: Props) {
       ) : (
         <div className="marketplace__grid">
           {mine.map((item) => (
-            <article key={item.id} className="market-card market-card--mine">
-              <span className="market-card__badge">{item.genreLabel}</span>
-              <h3>{item.title}</h3>
-              <p className="market-card__price">{formatPrice(item.price)}</p>
-              <p className="market-card__meta">
-                {item.chordLabel ? `코드: ${item.chordLabel} · ` : null}
-                노트 {item.noteCount}개 · {formatDate(item.createdAt)}
-              </p>
-            </article>
+            <ListingCard
+              key={item.id}
+              item={item}
+              mine
+              playing={playingId === item.id}
+              loading={loadingId === item.id}
+              onToggle={() => void togglePlay(item)}
+            />
           ))}
         </div>
       )}
@@ -56,14 +131,13 @@ export function MarketplaceView({ listings }: Props) {
           <h2 className="marketplace__section-title">둘러보기</h2>
           <div className="marketplace__grid">
             {others.map((item) => (
-              <article key={item.id} className="market-card">
-                <span className="market-card__badge">{item.genreLabel}</span>
-                <h3>{item.title}</h3>
-                <p className="market-card__price">{formatPrice(item.price)}</p>
-                <p className="market-card__meta">
-                  {item.chordLabel ? `코드: ${item.chordLabel}` : '샘플 작품'}
-                </p>
-              </article>
+              <ListingCard
+                key={item.id}
+                item={item}
+                playing={playingId === item.id}
+                loading={loadingId === item.id}
+                onToggle={() => void togglePlay(item)}
+              />
             ))}
           </div>
         </>
