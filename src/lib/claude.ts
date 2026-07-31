@@ -1,0 +1,81 @@
+import type { ChordSuggestion, ChordVoicing } from '../types/chord'
+import { FALLBACK_CHORD_SUGGESTIONS } from './chordFallback'
+
+function isChordVoicing(value: unknown): value is ChordVoicing {
+  if (!value || typeof value !== 'object') return false
+  const v = value as Record<string, unknown>
+  return (
+    typeof v.name === 'string' &&
+    Array.isArray(v.notes) &&
+    v.notes.every((n) => typeof n === 'string')
+  )
+}
+
+function isChordSuggestion(value: unknown): value is ChordSuggestion {
+  if (!value || typeof value !== 'object') return false
+  const v = value as Record<string, unknown>
+  return (
+    typeof v.label === 'string' &&
+    Array.isArray(v.chords) &&
+    v.chords.every(isChordVoicing)
+  )
+}
+
+function extractJsonArray(text: string): unknown {
+  const trimmed = text.trim()
+  try {
+    return JSON.parse(trimmed)
+  } catch {
+    const start = trimmed.indexOf('[')
+    const end = trimmed.lastIndexOf(']')
+    if (start >= 0 && end > start) {
+      return JSON.parse(trimmed.slice(start, end + 1))
+    }
+    throw new Error('No JSON array found in response')
+  }
+}
+
+export function parseChordSuggestions(raw: string): ChordSuggestion[] {
+  try {
+    const parsed = extractJsonArray(raw)
+    if (!Array.isArray(parsed)) {
+      throw new Error('Response is not an array')
+    }
+    const valid = parsed.filter(isChordSuggestion)
+    if (valid.length === 0) {
+      throw new Error('No valid chord suggestions')
+    }
+    return valid.slice(0, 3)
+  } catch (err) {
+    console.warn('[claude] JSON parse failed, using fallback', err)
+    return FALLBACK_CHORD_SUGGESTIONS
+  }
+}
+
+export async function suggestChordProgressions(
+  melodySummary: string,
+): Promise<ChordSuggestion[]> {
+  try {
+    const res = await fetch('/api/chords', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ melodySummary }),
+    })
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(`API ${res.status}: ${text}`)
+    }
+    const data = (await res.json()) as { raw?: string; suggestions?: unknown }
+    if (Array.isArray(data.suggestions)) {
+      const valid = data.suggestions.filter(isChordSuggestion)
+      if (valid.length > 0) return valid.slice(0, 3)
+    }
+    if (typeof data.raw === 'string') {
+      return parseChordSuggestions(data.raw)
+    }
+    throw new Error('Unexpected API response shape')
+  } catch (err) {
+    console.warn('[claude] request failed, using fallback', err)
+    return FALLBACK_CHORD_SUGGESTIONS
+  }
+}
