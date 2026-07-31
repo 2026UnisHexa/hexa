@@ -4,14 +4,12 @@ type Props = {
   view: View
   onNavigate: (view: View) => void
   showCreateNav?: boolean
-  avatarLabel?: string
 }
 
 export function AppHeader({
   view,
   onNavigate,
   showCreateNav = true,
-  avatarLabel = 'ME',
 }: Props) {
   return (
     <header className="app-header">
@@ -52,14 +50,6 @@ export function AppHeader({
             </button>
           </>
         ) : null}
-        <button
-          type="button"
-          className={`app-header__avatar${view === 'mypage' ? ' is-active' : ''}`}
-          onClick={() => onNavigate('mypage')}
-          aria-label="마이페이지"
-        >
-          {avatarLabel}
-        </button>
       </nav>
     </header>
   )

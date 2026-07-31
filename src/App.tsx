@@ -228,11 +228,6 @@ export default function App() {
     window.location.assign('/login')
   }
 
-  const avatarLabel = (profile.displayName || profile.loginId || 'ME')
-    .trim()
-    .slice(0, 2)
-    .toUpperCase() || 'ME'
-
   function registerListing() {
     const trimmed = listingTitle.trim()
     if (!trimmed || !hasMelody) return
@@ -323,7 +318,6 @@ export default function App() {
       <AppHeader
         view={view}
         onNavigate={navigate}
-        avatarLabel={avatarLabel}
       />
 
       <div className="app-body">

@@ -129,32 +129,6 @@ img {
   color: var(--color-primary);
 }
 
-.app-header__avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 2px solid var(--color-border);
-  background: var(--color-primary-light);
-  display: grid;
-  place-items: center;
-  color: var(--color-primary-dark);
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0;
-  transition:
-    border-color 0.15s ease,
-    background 0.15s ease,
-    color 0.15s ease;
-}
-
-.app-header__avatar.is-active,
-.app-header__avatar:hover {
-  border-color: var(--color-primary);
-  background: var(--color-primary-soft);
-  color: var(--color-primary-deeper);
-}
-
 .app-body {
   flex: 1;
   display: flex;
@@ -1296,32 +1270,6 @@ img {
 .app-header__link:hover,
 .app-header__link.is-active {
   color: var(--color-primary);
-}
-
-.app-header__avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 2px solid var(--color-border);
-  background: var(--color-primary-light);
-  display: grid;
-  place-items: center;
-  color: var(--color-primary-dark);
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0;
-  transition:
-    border-color 0.15s ease,
-    background 0.15s ease,
-    color 0.15s ease;
-}
-
-.app-header__avatar.is-active,
-.app-header__avatar:hover {
-  border-color: var(--color-primary);
-  background: var(--color-primary-soft);
-  color: var(--color-primary-deeper);
 }
 
 .app-body {
