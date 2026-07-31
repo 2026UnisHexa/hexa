@@ -145,6 +145,8 @@ export default function App() {
           if (!s) return
           void chordPlayback.play(s.chords, genrePreset.chordDurationSeconds)
         }}
+        onStop={chordPlayback.stop}
+        playing={chordPlayback.playing}
         playDisabled={chordPlayback.playing}
       />
 

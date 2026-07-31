@@ -35,6 +35,11 @@ function extractJsonArray(text: string): unknown {
   }
 }
 
+function withFallback(reason: string): ChordSuggestion[] {
+  console.log('[chords] source: fallback', { reason })
+  return FALLBACK_CHORD_SUGGESTIONS
+}
+
 export function parseChordSuggestions(raw: string): ChordSuggestion[] {
   try {
     const parsed = extractJsonArray(raw)
@@ -45,10 +50,14 @@ export function parseChordSuggestions(raw: string): ChordSuggestion[] {
     if (valid.length === 0) {
       throw new Error('No valid chord suggestions')
     }
+    console.log('[chords] source: openai-api', {
+      count: Math.min(valid.length, 3),
+      labels: valid.slice(0, 3).map((s) => s.label),
+    })
     return valid.slice(0, 3)
   } catch (err) {
     console.warn('[suggest-chords] JSON parse failed, using fallback', err)
-    return FALLBACK_CHORD_SUGGESTIONS
+    return withFallback('json-parse-failed')
   }
 }
 
@@ -60,6 +69,7 @@ export function parseChordSuggestions(raw: string): ChordSuggestion[] {
 export async function suggestChordProgressions(
   melodySummary: string,
 ): Promise<ChordSuggestion[]> {
+  console.log('[chords] request melodySummary', melodySummary)
   try {
     const res = await fetch('/api/suggest-chords', {
       method: 'POST',
@@ -73,7 +83,13 @@ export async function suggestChordProgressions(
     const data = (await res.json()) as { raw?: string; suggestions?: unknown }
     if (Array.isArray(data.suggestions)) {
       const valid = data.suggestions.filter(isChordSuggestion)
-      if (valid.length > 0) return valid.slice(0, 3)
+      if (valid.length > 0) {
+        console.log('[chords] source: openai-api', {
+          count: Math.min(valid.length, 3),
+          labels: valid.slice(0, 3).map((s) => s.label),
+        })
+        return valid.slice(0, 3)
+      }
     }
     if (typeof data.raw === 'string') {
       return parseChordSuggestions(data.raw)
@@ -81,6 +97,8 @@ export async function suggestChordProgressions(
     throw new Error('Unexpected API response shape')
   } catch (err) {
     console.warn('[suggest-chords] request failed, using fallback', err)
-    return FALLBACK_CHORD_SUGGESTIONS
+    return withFallback(
+      err instanceof Error ? err.message : 'request-failed',
+    )
   }
 }

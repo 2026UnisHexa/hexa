@@ -65,6 +65,8 @@ export function validateSuggestChordsBody(body) {
 export async function callOpenAIForChords(melodySummary, apiKey) {
   const userPrompt = `Melody summary:\n${melodySummary}\n\n8~16마디 분량의 코드 진행을 3개 제안해줘. 각 진행은 최소 8개 코드로 구성하고, 단순 반복이 아니라 자연스러운 전개(예: 도입-전개-변화-마무리)가 느껴지도록 만들어줘.\n반드시 JSON만 출력, 다른 설명 텍스트 없이. Return {"suggestions":[...]} with exactly 3 items.`
 
+  console.log('[api/suggest-chords] OpenAI user prompt melodySummary:', melodySummary)
+
   const client = new OpenAI({ apiKey })
 
   const completion = await client.chat.completions.create({
