@@ -12,10 +12,11 @@ const OPENAI_MODEL = 'gpt-4o-mini'
 
 const SYSTEM_PROMPT = `You are a music theory assistant. Given a melody summary, suggest exactly 3 chord progressions that fit it.
 Prefer diatonic chords.
+8~16마디 분량의 코드 진행을 3개 제안해줘. 각 진행은 최소 8개 코드로 구성하고, 단순 반복이 아니라 자연스러운 전개(예: 도입-전개-변화-마무리)가 느껴지도록 만들어줘.
 반드시 JSON만 출력, 다른 설명 텍스트 없이.
 Return a JSON object with this exact shape:
 {"suggestions":[{"label":string,"chords":[{"name":string,"notes":string[]}]}]}
-Example: {"suggestions":[{"label":"안정적인 팝 진행","chords":[{"name":"C","notes":["C4","E4","G4"]},{"name":"Am","notes":["A3","C4","E4"]},{"name":"F","notes":["F3","A3","C4"]},{"name":"G","notes":["G3","B3","D4"]}]}]}`
+Example: {"suggestions":[{"label":"안정적인 팝 진행","chords":[{"name":"C","notes":["C4","E4","G4"]},{"name":"Am","notes":["A3","C4","E4"]},{"name":"F","notes":["F3","A3","C4"]},{"name":"G","notes":["G3","B3","D4"]},{"name":"Am","notes":["A3","C4","E4"]},{"name":"F","notes":["F3","A3","C4"]},{"name":"C","notes":["C4","E4","G4"]},{"name":"G","notes":["G3","B3","D4"]}]}]}`
 
 /**
  * @param {unknown} body
@@ -62,7 +63,7 @@ export function validateSuggestChordsBody(body) {
  * @returns {Promise<string>} raw JSON text (array of suggestions) for the frontend parser
  */
 export async function callOpenAIForChords(melodySummary, apiKey) {
-  const userPrompt = `Melody summary:\n${melodySummary}\n\n반드시 JSON만 출력, 다른 설명 텍스트 없이. Return {"suggestions":[...]} with exactly 3 items.`
+  const userPrompt = `Melody summary:\n${melodySummary}\n\n8~16마디 분량의 코드 진행을 3개 제안해줘. 각 진행은 최소 8개 코드로 구성하고, 단순 반복이 아니라 자연스러운 전개(예: 도입-전개-변화-마무리)가 느껴지도록 만들어줘.\n반드시 JSON만 출력, 다른 설명 텍스트 없이. Return {"suggestions":[...]} with exactly 3 items.`
 
   const client = new OpenAI({ apiKey })
 
