@@ -1,7 +1,9 @@
+import type { PlaybackMode } from '../../hooks/usePlayback'
+
 type Props = {
   melodyDisabled: boolean
   accompanimentDisabled: boolean
-  playing: boolean
+  mode: PlaybackMode
   onToggleMelody: () => void
   onToggleWithAccompaniment: () => void
 }
@@ -9,28 +11,32 @@ type Props = {
 export function PlaybackControls({
   melodyDisabled,
   accompanimentDisabled,
-  playing,
+  mode,
   onToggleMelody,
   onToggleWithAccompaniment,
 }: Props) {
+  const melodyActive = mode === 'melody'
+  const accompanimentActive = mode === 'accompaniment'
+
   return (
     <section>
-      <h2>미리듣기</h2>
+      <h2>5. 미리듣기</h2>
       <button
         type="button"
         onClick={onToggleMelody}
-        disabled={melodyDisabled}
+        disabled={melodyDisabled || accompanimentActive}
       >
-        {playing ? '⏹ 정지' : '▶ 인식된 멜로디 듣기'}
+        {melodyActive ? '⏹ 정지' : '▶ 인식된 멜로디 듣기'}
       </button>{' '}
       <button
         type="button"
         onClick={onToggleWithAccompaniment}
-        disabled={accompanimentDisabled && !playing}
+        disabled={accompanimentDisabled || melodyActive}
       >
-        {playing ? '⏹ 정지' : '멜로디 + 반주 재생'}
+        {accompanimentActive ? '⏹ 정지' : '▶ 멜로디 + 반주 재생'}
       </button>
-      {playing ? <p>재생 중…</p> : null}
+      {melodyActive ? <p>멜로디 재생 중…</p> : null}
+      {accompanimentActive ? <p>멜로디 + 반주 재생 중…</p> : null}
     </section>
   )
 }

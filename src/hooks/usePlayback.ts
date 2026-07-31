@@ -52,25 +52,29 @@ export function useInstrument(instrumentId: InstrumentId) {
   return { isLoading, error }
 }
 
+export type PlaybackMode = 'idle' | 'melody' | 'accompaniment'
+
 export function usePlayback(instrumentId: InstrumentId = 'piano') {
-  const [playing, setPlaying] = useState(false)
+  const [mode, setMode] = useState<PlaybackMode>('idle')
   const generationRef = useRef(0)
   const instrumentIdRef = useRef(instrumentId)
   instrumentIdRef.current = instrumentId
 
+  const playing = mode !== 'idle'
+
   const stop = useCallback(() => {
     generationRef.current += 1
     stopPlayback()
-    setPlaying(false)
+    setMode('idle')
   }, [])
 
   const playNotes = useCallback(async (notes: MelodyNote[]) => {
     const gen = ++generationRef.current
-    setPlaying(true)
+    setMode('melody')
     try {
       await playMelody(notes, instrumentIdRef.current)
     } finally {
-      if (gen === generationRef.current) setPlaying(false)
+      if (gen === generationRef.current) setMode('idle')
     }
   }, [])
 
@@ -81,7 +85,7 @@ export function usePlayback(instrumentId: InstrumentId = 'piano') {
       preset: GenrePreset,
     ) => {
       const gen = ++generationRef.current
-      setPlaying(true)
+      setMode('accompaniment')
       try {
         await playMelodyWithAccompaniment(
           notes,
@@ -90,7 +94,7 @@ export function usePlayback(instrumentId: InstrumentId = 'piano') {
           instrumentIdRef.current,
         )
       } finally {
-        if (gen === generationRef.current) setPlaying(false)
+        if (gen === generationRef.current) setMode('idle')
       }
     },
     [],
@@ -98,13 +102,16 @@ export function usePlayback(instrumentId: InstrumentId = 'piano') {
 
   const toggleMelody = useCallback(
     (notes: MelodyNote[]) => {
-      if (playing) {
+      if (mode === 'melody') {
         stop()
         return
       }
+      if (mode === 'accompaniment') {
+        stop()
+      }
       void playNotes(notes)
     },
-    [playing, playNotes, stop],
+    [mode, playNotes, stop],
   )
 
   const toggleWithAccompaniment = useCallback(
@@ -113,17 +120,21 @@ export function usePlayback(instrumentId: InstrumentId = 'piano') {
       chords: ChordVoicing[],
       preset: GenrePreset,
     ) => {
-      if (playing) {
+      if (mode === 'accompaniment') {
         stop()
         return
       }
+      if (mode === 'melody') {
+        stop()
+      }
       void playWithAccompaniment(notes, chords, preset)
     },
-    [playing, playWithAccompaniment, stop],
+    [mode, playWithAccompaniment, stop],
   )
 
   return {
     playing,
+    mode,
     playNotes,
     playWithAccompaniment,
     stop,

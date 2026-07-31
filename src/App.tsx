@@ -66,7 +66,7 @@ export default function App() {
   const selectedSuggestion = suggestions[selectedIndex] ?? null
   const genrePreset = getGenrePreset(genreId)
   const hasMelody = pitch.notes.length > 0
-  const isPlayingMelody = playback.playing
+  const isPlayingMelody = playback.mode === 'melody'
   const isPlayingChords = chordPlayback.playing
 
   useEffect(() => {
@@ -205,14 +205,14 @@ export default function App() {
         accompanimentDisabled={
           !hasMelody || !selectedSuggestion || instrument.isLoading
         }
-        playing={isPlayingMelody}
+        mode={playback.mode}
         onToggleMelody={() => {
           if (instrument.isLoading) return
           playback.toggleMelody(pitch.notes)
         }}
         onToggleWithAccompaniment={() => {
           if (!selectedSuggestion) {
-            if (isPlayingMelody) playback.stop()
+            if (playback.mode === 'accompaniment') playback.stop()
             return
           }
           if (instrument.isLoading) return
