@@ -19,13 +19,39 @@
 |------|------|
 | 프론트엔드 | React 19 + Vite 8, TypeScript (Vercel 배포) |
 | 오디오 녹음 | MediaRecorder + `noiseSuppression` 등 |
-| 피치 인식 | `@spotify/basic-pitch` (TensorFlow.js, 클라이언트) |
+| 피치 인식 | `@spotify/basic-pitch` (TensorFlow.js, **브라우저**) |
 | 전처리 | 하이패스 · 노이즈 게이트 · 짧은 음 병합 · 조성(키) 스냅 |
 | 악보 | MusicXML → OpenSheetMusicDisplay (VexFlow) |
 | 재생 | Tone.js Sampler (피아노/기타) · PolySynth fallback |
-| 코드 제안 | Vercel `api/suggest-chords` → OpenAI (키는 서버만) |
-| 인증 백엔드 | Render FastAPI (`/signup`, `/login`) |
-| 클라이언트 저장 | `localStorage` (마켓 목록 · 프로필). **작품 음원 DB 없음** |
+| 음성→텍스트 | Vercel `api/transcribe` → OpenAI Whisper (`whisper-1`) |
+| 코드 제안 | Vercel `api/suggest-chords` → OpenAI GPT-4o mini |
+| 가사 생성 | Vercel `api/suggest-lyrics` → OpenAI GPT-4o mini |
+| 인증 백엔드 | Render FastAPI (`/signup`, `/login`, `/audio` …) |
+| 클라이언트 저장 | `localStorage` (마켓 목록 · 프로필). 작품 음원은 백엔드/Storage |
+
+---
+
+## 사용된 AI 모델
+
+### 오픈소스 — 클라이언트에서 실행
+
+| 이름 | 용도 | 실행 | 라이선스 |
+|------|------|------|----------|
+| [Spotify Basic Pitch](https://github.com/spotify/basic-pitch) (`@spotify/basic-pitch`) | 허밍 음성 → 음높이 · MIDI 노트 | 브라우저, TensorFlow.js | Apache-2.0 |
+
+### 모델은 오픈소스, 사용 방식은 상용 API
+
+| 이름 | 용도 | 이 프로젝트에서의 사용 | 참고 |
+|------|------|------------------------|------|
+| [OpenAI Whisper](https://github.com/openai/whisper) (`whisper-1`) | 음성 메모 → 텍스트 | **로컬 오픈소스 추론이 아니라** OpenAI API 호출 (Vercel `api/transcribe`) | 코드·가중치는 MIT로 공개됐으나, 여기선 상용 API |
+
+### 상용 API — 서버에서만 호출 (키 미노출)
+
+| 이름 | 용도 | 실행 |
+|------|------|------|
+| OpenAI GPT-4o mini | 멜로디에 맞는 코드 진행 추천 · 가사 생성 · Whisper 인식 결과 교정 | Vercel serverless (`suggest-chords`, `suggest-lyrics`, `transcribe`) |
+
+> OpenAI API 자체는 상용 서비스입니다. 아래 표의 `openai` npm 패키지는 API 호출용 **오픈 소스 SDK**(MIT)입니다.
 
 ---
 
@@ -179,7 +205,7 @@ Vercel에는 `OPENAI_API_KEY`, `VITE_API_BASE_URL`을 등록한다.
 | [@tonejs/midi](https://github.com/Tonejs/Midi) | MIDI 파일 생성·다운로드 | MIT |
 | [OpenSheetMusicDisplay](https://opensheetmusicdisplay.org/) | MusicXML 오선보 렌더링 | [opensheetmusicdisplay/opensheetmusicdisplay](https://github.com/opensheetmusicdisplay/opensheetmusicdisplay) |
 | [VexFlow](https://www.vexflow.com/) | OSMD 의존 (악보 렌더링 엔진) | [vexflow/vexflow](https://github.com/vexflow/vexflow) |
-| [OpenAI Node SDK](https://github.com/openai/openai-node) (`openai`) | 서버사이드 코드 진행 제안 API 클라이언트 | MIT |
+| [OpenAI Node SDK](https://github.com/openai/openai-node) (`openai`) | Whisper · GPT-4o mini 서버 호출용 SDK | MIT |
 | [TensorFlow.js](https://www.tensorflow.org/js) | Basic Pitch 모델 추론 (basic-pitch 의존) | Apache-2.0 |
 
 ### 개발 도구
@@ -203,5 +229,3 @@ Vercel에는 `OPENAI_API_KEY`, `VITE_API_BASE_URL`을 등록한다.
 | 이름 | 용도 |
 |------|------|
 | Krumhansl–Kessler key profiles | 조성(키) 추정에 사용한 피치 클래스 프로파일 (학술 공개 프로파일) |
-
-> OpenAI API 자체는 상용 서비스이며, 위 표의 `openai` 패키지는 API 호출용 **오픈 소스 SDK**입니다.
