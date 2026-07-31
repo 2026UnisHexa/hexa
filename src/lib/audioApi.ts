@@ -109,16 +109,26 @@ export async function uploadAudio(
   if (input.tempoBpm != null) form.append('tempoBpm', String(input.tempoBpm))
   if (input.noteCount != null) form.append('noteCount', String(input.noteCount))
 
-  const ext = input.audioBlob.type.includes('webm')
+  const rawType = (input.audioBlob.type || '').toLowerCase()
+  const ext = rawType.includes('webm')
     ? 'webm'
-    : input.audioBlob.type.includes('mp4') || input.audioBlob.type.includes('m4a')
+    : rawType.includes('mp4') || rawType.includes('m4a')
       ? 'm4a'
-      : 'wav'
-  form.append(
-    'audioFile',
-    input.audioBlob,
+      : rawType.includes('wav')
+        ? 'wav'
+        : 'webm'
+  const mime =
+    ext === 'webm'
+      ? 'audio/webm'
+      : ext === 'm4a'
+        ? 'audio/mp4'
+        : 'audio/wav'
+  const file = new File(
+    [input.audioBlob],
     input.fileName ?? `hexa-recording.${ext}`,
+    { type: mime },
   )
+  form.append('audioFile', file)
 
   const res = await fetch(`${base}/audio`, {
     method: 'POST',

@@ -9,20 +9,45 @@ import { sanitizeChordNotes } from './noteSanitize'
 function isChordVoicing(value: unknown): value is ChordVoicing {
   if (!value || typeof value !== 'object') return false
   const v = value as Record<string, unknown>
-  if (typeof v.name !== 'string' || !Array.isArray(v.notes)) return false
-  const sanitized = sanitizeChordNotes(
-    v.notes.filter((n): n is string => typeof n === 'string'),
-  )
-  return sanitized.length > 0
+  const name = typeof v.name === 'string' ? v.name : typeof v.chord === 'string' ? v.chord : null
+  const notes = Array.isArray(v.notes)
+    ? v.notes
+    : Array.isArray(v.pitches)
+      ? v.pitches
+      : null
+  if (!name || !notes) return false
+  return sanitizeChordNotes(notes).length > 0
+}
+
+function toChordVoicing(value: unknown): ChordVoicing | null {
+  if (!value || typeof value !== 'object') return null
+  const v = value as Record<string, unknown>
+  const name =
+    typeof v.name === 'string'
+      ? v.name
+      : typeof v.chord === 'string'
+        ? v.chord
+        : null
+  const notes = Array.isArray(v.notes)
+    ? v.notes
+    : Array.isArray(v.pitches)
+      ? v.pitches
+      : null
+  if (!name || !notes) return null
+  const sanitized = sanitizeChordNotes(notes)
+  if (sanitized.length === 0) return null
+  return { name, notes: sanitized }
 }
 
 function isChordSuggestion(value: unknown): value is ChordSuggestion {
   if (!value || typeof value !== 'object') return false
   const v = value as Record<string, unknown>
+  // Accept if at least one chord is playable — OpenAI often slips one bad
+  // voicing into an otherwise valid progression; don't discard the whole set.
   return (
     typeof v.label === 'string' &&
     Array.isArray(v.chords) &&
-    v.chords.every(isChordVoicing)
+    v.chords.some(isChordVoicing)
   )
 }
 
@@ -40,12 +65,6 @@ function extractJsonArray(text: string): unknown {
   }
 }
 
-function normalizeChordVoicing(value: ChordVoicing): ChordVoicing | null {
-  const notes = sanitizeChordNotes(value.notes)
-  if (notes.length === 0) return null
-  return { name: value.name, notes }
-}
-
 function normalizeSuggestions(
   suggestions: ChordSuggestion[],
   noteCount: number,
@@ -55,10 +74,10 @@ function normalizeSuggestions(
     .slice(0, 3)
     .map((s) => {
       const chords = s.chords
-        .map(normalizeChordVoicing)
+        .map(toChordVoicing)
         .filter((c): c is ChordVoicing => c != null)
       return {
-        ...s,
+        label: s.label,
         chords: fitChordsToLength(chords, n),
       }
     })
@@ -82,9 +101,14 @@ export function parseChordSuggestions(
     }
     const valid = parsed.filter(isChordSuggestion)
     if (valid.length === 0) {
+      const sample = parsed[0]
+      console.warn('[suggest-chords] rejected payload sample', sample)
       throw new Error('No valid chord suggestions')
     }
     const normalized = normalizeSuggestions(valid, noteCount)
+    if (normalized.length === 0) {
+      throw new Error('No valid chord suggestions after normalize')
+    }
     console.log('[chords] source: openai-api', {
       count: normalized.length,
       noteCount,
@@ -93,7 +117,7 @@ export function parseChordSuggestions(
     })
     return normalized
   } catch (err) {
-    console.warn('[suggest-chords] JSON parse failed, using fallback', err)
+    console.warn('[suggest-chords] parse/validate failed, using fallback', err)
     return withFallback('json-parse-failed', noteCount)
   }
 }
@@ -124,13 +148,15 @@ export async function suggestChordProgressions(
       const valid = data.suggestions.filter(isChordSuggestion)
       if (valid.length > 0) {
         const normalized = normalizeSuggestions(valid, n)
-        console.log('[chords] source: openai-api', {
-          count: normalized.length,
-          noteCount: n,
-          chordLengths: normalized.map((s) => s.chords.length),
-          labels: normalized.map((s) => s.label),
-        })
-        return normalized
+        if (normalized.length > 0) {
+          console.log('[chords] source: openai-api', {
+            count: normalized.length,
+            noteCount: n,
+            chordLengths: normalized.map((s) => s.chords.length),
+            labels: normalized.map((s) => s.label),
+          })
+          return normalized
+        }
       }
     }
     if (typeof data.raw === 'string') {

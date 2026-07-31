@@ -18,7 +18,9 @@ Prefer diatonic chords.
 반드시 JSON만 출력, 다른 설명 텍스트 없이.
 Return a JSON object with this exact shape:
 {"suggestions":[{"label":string,"chords":[{"name":string,"notes":string[]}]}]}
-Each chords array MUST contain exactly N items.`
+Each chords array MUST contain exactly N items.
+Each notes array MUST use scientific pitch notation strings with octave, e.g. ["C4","E4","G4"] or ["A3","C4","E4"].
+Do NOT use MIDI numbers, unicode accidentals (♭/♯), or chord symbols inside notes — only pitch names like C, D, E, F, G, A, B with optional #/b and an octave digit.`}
 
 /**
  * @param {unknown} body
@@ -127,7 +129,8 @@ export async function callOpenAIForChords(melodySummary, noteCount, apiKey) {
 Melody summary:
 ${melodySummary}
 
-반드시 JSON만 출력, 다른 설명 텍스트 없이. Return {"suggestions":[...]} with exactly 3 items, each with exactly ${n} chords.`
+반드시 JSON만 출력, 다른 설명 텍스트 없이. Return {"suggestions":[...]} with exactly 3 items, each with exactly ${n} chords.
+Each chord notes MUST be scientific pitch strings with octave, e.g. ["C4","E4","G4"].`
 
   console.log('[api/suggest-chords] OpenAI prompt', { noteCount: n, melodySummary })
 
