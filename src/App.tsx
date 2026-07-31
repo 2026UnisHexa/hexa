@@ -19,14 +19,26 @@ import { LoadingState } from './components/common/LoadingState'
 import { ErrorMessage } from './components/common/ErrorMessage'
 import { useRecorder } from './hooks/useRecorder'
 import { useBasicPitch } from './hooks/useBasicPitch'
+import { useLocalStorage } from './hooks/useLocalStorage'
 import {
   useChordPlayback,
   useInstrument,
   usePlayback,
 } from './hooks/usePlayback'
 import { suggestChordProgressions } from './lib/claude'
-import { melodyNotesToMusicXml } from './lib/midiToMusicXml'
-import { downloadBlob, melodyNotesToMidiBlob } from './lib/midiDownload'
+import {
+  compositionToMusicXml,
+  melodyNotesToMusicXml,
+} from './lib/midiToMusicXml'
+import {
+  compositionToMidiBlob,
+  downloadBlob,
+  melodyNotesToMidiBlob,
+} from './lib/midiDownload'
+import {
+  buildAccompanimentNotes,
+  melodyAccompanimentStart,
+} from './lib/accompanimentNotes'
 import { getGenrePreset } from './lib/presets'
 import type { InstrumentId } from './lib/instruments'
 import {
@@ -36,8 +48,48 @@ import {
 } from './utils/melodySummary'
 import type { ChordSuggestion } from './types/chord'
 import type { GenreId } from './types/genre'
+import type { MarketplaceListing } from './types/listing'
 
 type View = 'home' | 'create' | 'marketplace'
+
+const SEED_LISTINGS: MarketplaceListing[] = [
+  {
+    id: 'seed-1',
+    title: '새벽 창가의 허밍',
+    price: 1200,
+    genreId: 'ballad',
+    genreLabel: '발라드',
+    chordLabel: '감성 진행',
+    noteCount: 24,
+    tempoBpm: 72,
+    createdAt: '2026-07-20T10:00:00.000Z',
+    mine: false,
+  },
+  {
+    id: 'seed-2',
+    title: '비 오는 날의 리프',
+    price: 2000,
+    genreId: 'jazz',
+    genreLabel: '재즈',
+    chordLabel: '재즈 II-V-I',
+    noteCount: 36,
+    tempoBpm: 96,
+    createdAt: '2026-07-22T14:30:00.000Z',
+    mine: false,
+  },
+  {
+    id: 'seed-3',
+    title: '버스 정류장 멜로디',
+    price: 900,
+    genreId: 'pop',
+    genreLabel: '팝',
+    chordLabel: '팝 진행',
+    noteCount: 18,
+    tempoBpm: 110,
+    createdAt: '2026-07-28T09:15:00.000Z',
+    mine: false,
+  },
+]
 
 export default function App() {
   const [view, setView] = useState<View>('home')
@@ -60,9 +112,15 @@ export default function App() {
   )
   const [suggestLoading, setSuggestLoading] = useState(false)
   const [genreId, setGenreId] = useState<GenreId>('pop')
+  const [listings, setListings] = useLocalStorage<MarketplaceListing[]>(
+    'marketplace-listings',
+    SEED_LISTINGS,
+  )
   const [priceOpen, setPriceOpen] = useState(false)
   const [successOpen, setSuccessOpen] = useState(false)
+  const [listingTitle, setListingTitle] = useState('나의 허밍 멜로디')
   const [price, setPrice] = useState('1000')
+  const [lastListedTitle, setLastListedTitle] = useState('나의 허밍 멜로디')
   const [pipelineError, setPipelineError] = useState<string | null>(null)
   const processedBlobRef = useRef<Blob | null>(null)
 
@@ -97,6 +155,30 @@ export default function App() {
     }
   }
 
+  function registerListing() {
+    const trimmed = listingTitle.trim()
+    if (!trimmed || !hasMelody) return
+
+    const parsedPrice = Math.max(0, Number(price) || 0)
+    const listing: MarketplaceListing = {
+      id: `mine-${Date.now()}`,
+      title: trimmed,
+      price: parsedPrice,
+      genreId,
+      genreLabel: genrePreset.label,
+      chordLabel: selectedSuggestion?.label ?? null,
+      noteCount: pitch.notes.length,
+      tempoBpm,
+      createdAt: new Date().toISOString(),
+      mine: true,
+    }
+
+    setListings((prev) => [listing, ...prev])
+    setLastListedTitle(trimmed)
+    setPriceOpen(false)
+    setSuccessOpen(true)
+  }
+
   useEffect(() => {
     if (!isPlayingChords) {
       setPlayingChordIndex(null)
@@ -118,7 +200,7 @@ export default function App() {
       stopChords()
       setPlayingChordIndex(null)
 
-      const notes = await pitch.transcribe(blob)
+      const { notes, correction } = await pitch.transcribe(blob)
       if (cancelled || notes.length === 0) return
 
       goToStep(2)
@@ -127,8 +209,12 @@ export default function App() {
       try {
         const bpm = estimateTempoBpm(notes)
         const noteCount = melodySummaryNoteCount(notes)
-        const summary = summarizeMelody(notes, bpm)
-        console.log('[App] melody summary', { summary, noteCount })
+        const summary = summarizeMelody(
+          notes,
+          bpm,
+          correction?.key?.label ?? null,
+        )
+        console.log('[App] melody summary', { summary, noteCount, correction })
         const result = await suggestChordProgressions(summary, noteCount)
         if (!cancelled) {
           setSuggestions(result)
@@ -167,7 +253,10 @@ export default function App() {
         ) : null}
 
         {view === 'marketplace' ? (
-          <MarketplaceView onCreate={() => navigate('create')} />
+          <MarketplaceView
+            listings={listings}
+            onCreate={() => navigate('create')}
+          />
         ) : null}
 
         {view === 'create' ? (
@@ -210,6 +299,14 @@ export default function App() {
                     <p className="muted">
                       인식된 노트 {pitch.notes.length}개 · 추정 템포 {tempoBpm}{' '}
                       BPM
+                      {pitch.correction?.key
+                        ? ` · 추정 조성 ${pitch.correction.keyLabel}`
+                        : null}
+                      {pitch.correction &&
+                      (pitch.correction.snappedCount > 0 ||
+                        pitch.correction.removedCount > 0)
+                        ? ` · 보정(스냅 ${pitch.correction.snappedCount} / 제거 ${pitch.correction.removedCount})`
+                        : null}
                     </p>
                   ) : null}
                   <ScoreView
@@ -227,6 +324,29 @@ export default function App() {
                       playback.toggleMelody(pitch.notes)
                     }}
                   />
+                  <div className="panel" style={{ marginTop: 16 }}>
+                    <p className="muted">
+                      원본 멜로디만 다운로드합니다. (코드·장르 반주 미포함)
+                    </p>
+                    <div className="download-actions">
+                      <DownloadButtons
+                        disabled={!hasMelody || !musicXml}
+                        onDownloadMidi={() => {
+                          const blob = melodyNotesToMidiBlob(pitch.notes)
+                          downloadBlob(blob, 'hexa-melody-original.mid')
+                        }}
+                        onDownloadMusicXml={() => {
+                          if (!musicXml) return
+                          downloadBlob(
+                            new Blob([musicXml], {
+                              type: 'application/vnd.recordare.musicxml+xml',
+                            }),
+                            'hexa-melody-original.musicxml',
+                          )
+                        }}
+                      />
+                    </div>
+                  </div>
                 </>
               ) : null}
 
@@ -314,26 +434,65 @@ export default function App() {
                       )
                     }}
                   />
+                  <p className="muted">
+                    {selectedSuggestion
+                      ? `선택 코드「${selectedSuggestion.label}」· 장르「${genrePreset.label}」(${genrePreset.pattern})가 MIDI/MusicXML 반주 트랙에 포함됩니다.`
+                      : '코드 진행을 선택해야 반주가 포함된 파일을 받을 수 있습니다.'}
+                  </p>
                   <div className="download-actions">
                     <DownloadButtons
-                      disabled={!hasMelody || !musicXml}
+                      disabled={
+                        !hasMelody || !musicXml || !selectedSuggestion
+                      }
                       onDownloadMidi={() => {
-                        const blob = melodyNotesToMidiBlob(pitch.notes)
-                        downloadBlob(blob, 'hexa-melody.mid')
+                        if (!selectedSuggestion) return
+                        const acc = buildAccompanimentNotes(
+                          selectedSuggestion.chords,
+                          genrePreset,
+                          melodyAccompanimentStart(pitch.notes),
+                        )
+                        const blob = compositionToMidiBlob(pitch.notes, acc)
+                        downloadBlob(blob, 'hexa-composition.mid')
                       }}
                       onDownloadMusicXml={() => {
-                        if (!musicXml) return
+                        if (!selectedSuggestion) return
+                        const acc = buildAccompanimentNotes(
+                          selectedSuggestion.chords,
+                          genrePreset,
+                          melodyAccompanimentStart(pitch.notes),
+                        )
+                        const xml = compositionToMusicXml(
+                          [
+                            {
+                              id: 'P1',
+                              name: 'Melody',
+                              notes: pitch.notes,
+                            },
+                            {
+                              id: 'P2',
+                              name: `Accompaniment (${genrePreset.label})`,
+                              notes: acc,
+                            },
+                          ],
+                          tempoBpm,
+                          'Hexa Composition',
+                        )
                         downloadBlob(
-                          new Blob([musicXml], {
+                          new Blob([xml], {
                             type: 'application/vnd.recordare.musicxml+xml',
                           }),
-                          'hexa-melody.musicxml',
+                          'hexa-composition.musicxml',
                         )
                       }}
                     />
                     <ListForSaleButton
                       disabled={!hasMelody}
-                      onClick={() => setPriceOpen(true)}
+                      onClick={() => {
+                        setListingTitle(
+                          (prev) => prev.trim() || '나의 허밍 멜로디',
+                        )
+                        setPriceOpen(true)
+                      }}
                     />
                   </div>
                 </>
@@ -364,18 +523,22 @@ export default function App() {
 
       <PriceInputModal
         open={priceOpen}
+        title={listingTitle}
         price={price}
+        onTitleChange={setListingTitle}
         onPriceChange={setPrice}
         onCancel={() => setPriceOpen(false)}
-        onSubmit={() => {
-          setPriceOpen(false)
-          setSuccessOpen(true)
-        }}
+        onSubmit={registerListing}
       />
       <ListingSuccessModal
         open={successOpen}
+        title={lastListedTitle}
         price={price}
         onClose={() => setSuccessOpen(false)}
+        onGoToMarketplace={() => {
+          setSuccessOpen(false)
+          navigate('marketplace')
+        }}
       />
     </div>
   )

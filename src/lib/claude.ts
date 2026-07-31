@@ -4,15 +4,16 @@ import {
   getFallbackChordSuggestions,
 } from './chordFallback'
 import { MAX_SUMMARY_NOTES } from '../utils/melodySummary'
+import { sanitizeChordNotes } from './noteSanitize'
 
 function isChordVoicing(value: unknown): value is ChordVoicing {
   if (!value || typeof value !== 'object') return false
   const v = value as Record<string, unknown>
-  return (
-    typeof v.name === 'string' &&
-    Array.isArray(v.notes) &&
-    v.notes.every((n) => typeof n === 'string')
+  if (typeof v.name !== 'string' || !Array.isArray(v.notes)) return false
+  const sanitized = sanitizeChordNotes(
+    v.notes.filter((n): n is string => typeof n === 'string'),
   )
+  return sanitized.length > 0
 }
 
 function isChordSuggestion(value: unknown): value is ChordSuggestion {
@@ -39,15 +40,29 @@ function extractJsonArray(text: string): unknown {
   }
 }
 
+function normalizeChordVoicing(value: ChordVoicing): ChordVoicing | null {
+  const notes = sanitizeChordNotes(value.notes)
+  if (notes.length === 0) return null
+  return { name: value.name, notes }
+}
+
 function normalizeSuggestions(
   suggestions: ChordSuggestion[],
   noteCount: number,
 ): ChordSuggestion[] {
   const n = Math.min(Math.max(noteCount, 1), MAX_SUMMARY_NOTES)
-  return suggestions.slice(0, 3).map((s) => ({
-    ...s,
-    chords: fitChordsToLength(s.chords, n),
-  }))
+  return suggestions
+    .slice(0, 3)
+    .map((s) => {
+      const chords = s.chords
+        .map(normalizeChordVoicing)
+        .filter((c): c is ChordVoicing => c != null)
+      return {
+        ...s,
+        chords: fitChordsToLength(chords, n),
+      }
+    })
+    .filter((s) => s.chords.length > 0)
 }
 
 function withFallback(reason: string, noteCount: number): ChordSuggestion[] {

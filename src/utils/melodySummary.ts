@@ -42,12 +42,17 @@ export function melodySummaryNoteCount(notes: MelodyNote[]): number {
   return Math.min(notes.length, MAX_SUMMARY_NOTES)
 }
 
-export function summarizeMelody(notes: MelodyNote[], tempoBpm: number): string {
+export function summarizeMelody(
+  notes: MelodyNote[],
+  tempoBpm: number,
+  keyLabel?: string | null,
+): string {
   if (notes.length === 0) {
     return 'empty melody, 4/4, tempo about 90, noteCount 0'
   }
   const slice = notes.slice(0, MAX_SUMMARY_NOTES)
   const names = slice.map((n) => midiToNoteName(n.pitchMidi))
   const joined = names.join('-')
-  return `${joined}, 4/4, tempo about ${tempoBpm}, noteCount ${slice.length}`
+  const keyPart = keyLabel ? `, key ${keyLabel}` : ''
+  return `${joined}, 4/4, tempo about ${tempoBpm}, noteCount ${slice.length}${keyPart}`
 }
