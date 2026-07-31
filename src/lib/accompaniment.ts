@@ -4,14 +4,15 @@ import type { GenrePreset } from '../types/genre'
 import type { MelodyNote } from '../types/midi'
 import { playChordProgression } from './chordPlayback'
 
-async function getMelodySynth(): Promise<Tone.Synth> {
+async function getMelodySynth(): Promise<Tone.PolySynth> {
   await Tone.start()
-  return new Tone.Synth().toDestination()
+  return new Tone.PolySynth(Tone.Synth).toDestination()
 }
 
-/** Play melody notes with a simple synth. */
+/** Play melody notes with original startTime/duration timing (not equalized beats). */
 export async function playMelody(notes: MelodyNote[]): Promise<void> {
   if (notes.length === 0) return
+  console.log('[playMelody] start', { noteCount: notes.length })
   const synth = await getMelodySynth()
   const now = Tone.now()
   const sorted = [...notes].sort(
@@ -23,7 +24,9 @@ export async function playMelody(notes: MelodyNote[]): Promise<void> {
     const freq = Tone.Midi(note.pitchMidi).toFrequency()
     const start = now + (note.startTimeSeconds - t0)
     const dur = Math.max(0.05, note.durationSeconds)
-    synth.triggerAttackRelease(freq, dur, start, note.amplitude)
+    // Basic Pitch amplitude can be very low; keep audible floor.
+    const velocity = Math.min(1, Math.max(0.2, note.amplitude || 0.6))
+    synth.triggerAttackRelease(freq, dur, start, velocity)
   }
 
   const end =
@@ -33,6 +36,7 @@ export async function playMelody(notes: MelodyNote[]): Promise<void> {
     ) - t0
   await new Promise((r) => setTimeout(r, end * 1000 + 200))
   synth.dispose()
+  console.log('[playMelody] end')
 }
 
 /**

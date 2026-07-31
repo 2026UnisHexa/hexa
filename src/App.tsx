@@ -127,7 +127,12 @@ export default function App() {
         </p>
       ) : null}
 
-      <ScoreView musicXml={musicXml} />
+      <ScoreView
+        musicXml={musicXml}
+        hasMelody={hasMelody}
+        playing={playback.playing}
+        onPlayMelody={() => void playback.playNotes(pitch.notes)}
+      />
 
       <ChordSuggestions
         suggestions={suggestions}
@@ -145,7 +150,8 @@ export default function App() {
       <GenrePreset value={genreId} onChange={setGenreId} />
 
       <PlaybackControls
-        disabled={!hasMelody || !selectedSuggestion}
+        melodyDisabled={!hasMelody}
+        accompanimentDisabled={!hasMelody || !selectedSuggestion}
         playing={playback.playing}
         onPlayMelody={() => void playback.playNotes(pitch.notes)}
         onPlayWithAccompaniment={() => {
