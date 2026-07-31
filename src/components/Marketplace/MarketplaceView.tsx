@@ -2,7 +2,6 @@ import type { MarketplaceListing } from '../../types/listing'
 
 type Props = {
   listings: MarketplaceListing[]
-  onCreate: () => void
 }
 
 function formatPrice(price: number): string {
@@ -22,7 +21,7 @@ function formatDate(iso: string): string {
   }
 }
 
-export function MarketplaceView({ listings, onCreate }: Props) {
+export function MarketplaceView({ listings }: Props) {
   const mine = listings.filter((l) => l.mine)
   const others = listings.filter((l) => !l.mine)
 
@@ -30,13 +29,8 @@ export function MarketplaceView({ listings, onCreate }: Props) {
     <section className="marketplace" data-node-id="6:73">
       <h1 className="marketplace__title">마켓플레이스</h1>
       <p className="muted">
-        등록한 작품을 확인하고, 새 멜로디를 만들어 올릴 수 있어요.
+        내가 올린 작품과 다른 사용자의 멜로디를 둘러볼 수 있어요.
       </p>
-      <div className="btn-row">
-        <button type="button" className="btn btn--primary" onClick={onCreate}>
-          새로 만들기
-        </button>
-      </div>
 
       <h2 className="marketplace__section-title">내가 올린 것 ({mine.length})</h2>
       {mine.length === 0 ? (
