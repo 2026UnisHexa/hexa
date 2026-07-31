@@ -99,13 +99,19 @@ img {
 }
 
 .app-header__brand {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--color-primary);
-  letter-spacing: -0.02em;
+  display: inline-flex;
+  align-items: center;
   background: none;
   border: none;
   padding: 0;
+  cursor: pointer;
+}
+
+.app-header__logo {
+  display: block;
+  width: auto;
+  height: 50px;
+  object-fit: contain;
 }
 
 .app-header__nav {
@@ -1243,13 +1249,12 @@ img {
 }
 
 .app-header__brand {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--color-primary);
-  letter-spacing: -0.02em;
+  display: inline-flex;
+  align-items: center;
   background: none;
   border: none;
   padding: 0;
+  cursor: pointer;
 }
 
 .app-header__nav {
@@ -2304,4 +2309,3 @@ img {
   line-height: 1.55;
   color: var(--color-text);
 }
-
