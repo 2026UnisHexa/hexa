@@ -25,8 +25,19 @@ import {
   usePlayback,
 } from './hooks/usePlayback'
 import { suggestChordProgressions } from './lib/claude'
-import { melodyNotesToMusicXml } from './lib/midiToMusicXml'
-import { downloadBlob, melodyNotesToMidiBlob } from './lib/midiDownload'
+import {
+  compositionToMusicXml,
+  melodyNotesToMusicXml,
+} from './lib/midiToMusicXml'
+import {
+  compositionToMidiBlob,
+  downloadBlob,
+  melodyNotesToMidiBlob,
+} from './lib/midiDownload'
+import {
+  buildAccompanimentNotes,
+  melodyAccompanimentStart,
+} from './lib/accompanimentNotes'
 import { getGenrePreset } from './lib/presets'
 import type { InstrumentId } from './lib/instruments'
 import {
@@ -227,6 +238,29 @@ export default function App() {
                       playback.toggleMelody(pitch.notes)
                     }}
                   />
+                  <div className="panel" style={{ marginTop: 16 }}>
+                    <p className="muted">
+                      원본 멜로디만 다운로드합니다. (코드·장르 반주 미포함)
+                    </p>
+                    <div className="download-actions">
+                      <DownloadButtons
+                        disabled={!hasMelody || !musicXml}
+                        onDownloadMidi={() => {
+                          const blob = melodyNotesToMidiBlob(pitch.notes)
+                          downloadBlob(blob, 'hexa-melody-original.mid')
+                        }}
+                        onDownloadMusicXml={() => {
+                          if (!musicXml) return
+                          downloadBlob(
+                            new Blob([musicXml], {
+                              type: 'application/vnd.recordare.musicxml+xml',
+                            }),
+                            'hexa-melody-original.musicxml',
+                          )
+                        }}
+                      />
+                    </div>
+                  </div>
                 </>
               ) : null}
 
@@ -314,20 +348,54 @@ export default function App() {
                       )
                     }}
                   />
+                  <p className="muted">
+                    {selectedSuggestion
+                      ? `선택 코드「${selectedSuggestion.label}」· 장르「${genrePreset.label}」(${genrePreset.pattern})가 MIDI/MusicXML 반주 트랙에 포함됩니다.`
+                      : '코드 진행을 선택해야 반주가 포함된 파일을 받을 수 있습니다.'}
+                  </p>
                   <div className="download-actions">
                     <DownloadButtons
-                      disabled={!hasMelody || !musicXml}
+                      disabled={
+                        !hasMelody || !musicXml || !selectedSuggestion
+                      }
                       onDownloadMidi={() => {
-                        const blob = melodyNotesToMidiBlob(pitch.notes)
-                        downloadBlob(blob, 'hexa-melody.mid')
+                        if (!selectedSuggestion) return
+                        const acc = buildAccompanimentNotes(
+                          selectedSuggestion.chords,
+                          genrePreset,
+                          melodyAccompanimentStart(pitch.notes),
+                        )
+                        const blob = compositionToMidiBlob(pitch.notes, acc)
+                        downloadBlob(blob, 'hexa-composition.mid')
                       }}
                       onDownloadMusicXml={() => {
-                        if (!musicXml) return
+                        if (!selectedSuggestion) return
+                        const acc = buildAccompanimentNotes(
+                          selectedSuggestion.chords,
+                          genrePreset,
+                          melodyAccompanimentStart(pitch.notes),
+                        )
+                        const xml = compositionToMusicXml(
+                          [
+                            {
+                              id: 'P1',
+                              name: 'Melody',
+                              notes: pitch.notes,
+                            },
+                            {
+                              id: 'P2',
+                              name: `Accompaniment (${genrePreset.label})`,
+                              notes: acc,
+                            },
+                          ],
+                          tempoBpm,
+                          'Hexa Composition',
+                        )
                         downloadBlob(
-                          new Blob([musicXml], {
+                          new Blob([xml], {
                             type: 'application/vnd.recordare.musicxml+xml',
                           }),
-                          'hexa-melody.musicxml',
+                          'hexa-composition.musicxml',
                         )
                       }}
                     />
