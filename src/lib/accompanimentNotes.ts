@@ -1,11 +1,7 @@
-import * as Tone from 'tone'
 import type { ChordVoicing } from '../types/chord'
 import type { GenrePreset } from '../types/genre'
 import type { MelodyNote } from '../types/midi'
-
-export function noteNameToMidi(name: string): number {
-  return Math.round(Tone.Frequency(name).toMidi())
-}
+import { noteNameToMidi } from './noteSanitize'
 
 /**
  * Expand chord progression + genre pattern into timed notes.
@@ -26,23 +22,29 @@ export function buildAccompanimentNotes(
 
     if (preset.pattern === 'arpeggio') {
       const beat = slot / 4
-      chord.notes.forEach((name, j) => {
+      let toneIndex = 0
+      for (const name of chord.notes) {
+        const midi = noteNameToMidi(name)
+        if (midi == null) continue
         notes.push({
-          startTimeSeconds: chordStart + j * beat,
+          startTimeSeconds: chordStart + toneIndex * beat,
           durationSeconds: Math.max(0.05, beat * 0.85),
-          pitchMidi: noteNameToMidi(name),
+          pitchMidi: midi,
           amplitude: 0.7,
         })
-      })
+        toneIndex += 1
+      }
       return
     }
 
     const noteDur = Math.max(0.05, slot * 0.9)
     for (const name of chord.notes) {
+      const midi = noteNameToMidi(name)
+      if (midi == null) continue
       notes.push({
         startTimeSeconds: chordStart,
         durationSeconds: noteDur,
-        pitchMidi: noteNameToMidi(name),
+        pitchMidi: midi,
         amplitude: 0.65,
       })
     }

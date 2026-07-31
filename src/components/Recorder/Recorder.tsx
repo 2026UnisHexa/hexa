@@ -35,8 +35,8 @@ export function Recorder({ status, error, onStart, onStop }: Props) {
   return (
     <div className="panel">
       <p className="muted">
-        단음으로, 마이크에 가까이 대고 녹음해 주세요. (화음/노이즈는 인식이
-        떨어질 수 있습니다)
+        단음으로, 마이크에 가까이 대고 녹음해 주세요. 녹음 후 잡음 제거 → 조성
+        추정 → 스케일 밖 노이즈음 보정을 거친 뒤 악보·멜로디를 만듭니다.
       </p>
       <div className="record-stage">
         <div

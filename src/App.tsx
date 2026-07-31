@@ -200,7 +200,7 @@ export default function App() {
       stopChords()
       setPlayingChordIndex(null)
 
-      const notes = await pitch.transcribe(blob)
+      const { notes, correction } = await pitch.transcribe(blob)
       if (cancelled || notes.length === 0) return
 
       goToStep(2)
@@ -209,8 +209,12 @@ export default function App() {
       try {
         const bpm = estimateTempoBpm(notes)
         const noteCount = melodySummaryNoteCount(notes)
-        const summary = summarizeMelody(notes, bpm)
-        console.log('[App] melody summary', { summary, noteCount })
+        const summary = summarizeMelody(
+          notes,
+          bpm,
+          correction?.key?.label ?? null,
+        )
+        console.log('[App] melody summary', { summary, noteCount, correction })
         const result = await suggestChordProgressions(summary, noteCount)
         if (!cancelled) {
           setSuggestions(result)
@@ -295,6 +299,14 @@ export default function App() {
                     <p className="muted">
                       인식된 노트 {pitch.notes.length}개 · 추정 템포 {tempoBpm}{' '}
                       BPM
+                      {pitch.correction?.key
+                        ? ` · 추정 조성 ${pitch.correction.keyLabel}`
+                        : null}
+                      {pitch.correction &&
+                      (pitch.correction.snappedCount > 0 ||
+                        pitch.correction.removedCount > 0)
+                        ? ` · 보정(스냅 ${pitch.correction.snappedCount} / 제거 ${pitch.correction.removedCount})`
+                        : null}
                     </p>
                   ) : null}
                   <ScoreView

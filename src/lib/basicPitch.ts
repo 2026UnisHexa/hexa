@@ -5,6 +5,7 @@ import {
   outputToNotesPoly,
   type NoteEventTime,
 } from '@spotify/basic-pitch'
+import { denoiseAudioBuffer } from './audioClean'
 
 const MODEL_URL = '/basic-pitch-model/model.json'
 const TARGET_SAMPLE_RATE = 22050
@@ -94,13 +95,15 @@ export async function audioBlobToNotes(
   blob: Blob,
   onProgress?: (pct: number) => void,
 ): Promise<NoteEventTime[]> {
-  const buffer = await blobToAudioBuffer(blob)
-  console.log('[basicPitch] AudioBuffer', {
-    duration: buffer.duration,
-    sampleRate: buffer.sampleRate,
-    channels: buffer.numberOfChannels,
+  const raw = await blobToAudioBuffer(blob)
+  console.log('[basicPitch] AudioBuffer (raw)', {
+    duration: raw.duration,
+    sampleRate: raw.sampleRate,
+    channels: raw.numberOfChannels,
   })
-  const notes = await audioBufferToNotes(buffer, onProgress)
-  console.log('[basicPitch] MIDI notes', notes)
+
+  const cleaned = await denoiseAudioBuffer(raw)
+  const notes = await audioBufferToNotes(cleaned, onProgress)
+  console.log('[basicPitch] MIDI notes (after denoise)', notes)
   return notes
 }

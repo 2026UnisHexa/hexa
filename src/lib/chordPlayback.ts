@@ -1,5 +1,6 @@
 import type { ChordVoicing } from '../types/chord'
 import { getInstrument, releaseInstrumentNotes } from './instruments'
+import { sanitizeChordNotes } from './noteSanitize'
 
 let chordWaitTimer: ReturnType<typeof setTimeout> | null = null
 let chordWaitResolve: (() => void) | null = null
@@ -39,15 +40,24 @@ export async function playChordProgression(
   releaseInstrumentNotes('piano')
 
   chords.forEach((chord, i) => {
+    const playable = sanitizeChordNotes(chord.notes)
+    if (playable.length === 0) {
+      console.warn('[chordPlayback] skip chord with no playable notes', chord)
+      return
+    }
     const delayMs = i * chordDurationSeconds * 1000
     const timer = setTimeout(() => {
       chordNoteTimers.delete(timer)
       if (generation !== chordGeneration) return
-      instrument.triggerAttackRelease(
-        chord.notes,
-        chordDurationSeconds * 0.9,
-        undefined,
-      )
+      try {
+        instrument.triggerAttackRelease(
+          playable,
+          chordDurationSeconds * 0.9,
+          undefined,
+        )
+      } catch (err) {
+        console.warn('[chordPlayback] trigger failed', { playable, err })
+      }
     }, delayMs)
     chordNoteTimers.add(timer)
   })

@@ -5,9 +5,9 @@ import type { MelodyNote } from '../types/midi'
 import type { InstrumentId, PlayableInstrument } from './instruments'
 import {
   getInstrument,
-  midiToNoteName,
   releaseInstrumentNotes,
 } from './instruments'
+import { midiToSafeNoteName, sanitizeChordNotes } from './noteSanitize'
 import {
   playChordProgression,
   stopChordPlayback,
@@ -80,21 +80,36 @@ function scheduleMelodyNotes(
   notes: MelodyNote[],
   generation: number,
 ): number {
-  const sorted = [...notes].sort(
-    (a, b) => a.startTimeSeconds - b.startTimeSeconds,
-  )
+  const sorted = [...notes]
+    .filter((n) => midiToSafeNoteName(n.pitchMidi) != null)
+    .sort((a, b) => a.startTimeSeconds - b.startTimeSeconds)
+
+  if (sorted.length === 0) return 0
+
   const t0 = sorted[0]!.startTimeSeconds
 
   for (const note of sorted) {
+    const pitch = midiToSafeNoteName(note.pitchMidi)
+    if (!pitch) continue
+
     const offsetMs = (note.startTimeSeconds - t0) * 1000
-    const dur = Math.max(0.05, note.durationSeconds)
-    const velocity = Math.min(1, Math.max(0.2, note.amplitude || 0.6))
-    const pitch = midiToNoteName(note.pitchMidi)
+    const dur = Math.max(
+      0.05,
+      Number.isFinite(note.durationSeconds) ? note.durationSeconds : 0.2,
+    )
+    const velocity = Math.min(
+      1,
+      Math.max(0.2, Number.isFinite(note.amplitude) ? note.amplitude || 0.6 : 0.6),
+    )
 
     const timer = setTimeout(() => {
       activeTimers.delete(timer)
       if (generation !== playbackGeneration) return
-      instrument.triggerAttackRelease(pitch, dur, undefined, velocity)
+      try {
+        instrument.triggerAttackRelease(pitch, dur, undefined, velocity)
+      } catch (err) {
+        console.warn('[playMelody] trigger failed', { pitch, err })
+      }
     }, Math.max(0, offsetMs))
     activeTimers.add(timer)
   }
@@ -163,8 +178,16 @@ export async function playAccompaniment(
     const beat = preset.chordDurationSeconds / 4
     let t = Tone.now()
     for (const chord of chords) {
-      for (const note of chord.notes) {
-        synth.triggerAttackRelease(note, beat * 0.85, t)
+      const playable = sanitizeChordNotes(chord.notes)
+      for (const note of playable) {
+        try {
+          synth.triggerAttackRelease(note, beat * 0.85, t)
+        } catch (err) {
+          console.warn('[playAccompaniment] arpeggio note failed', {
+            note,
+            err,
+          })
+        }
         t += beat
       }
     }
