@@ -396,6 +396,10 @@ export default function App() {
                         ? ` · 추정 조성 ${pitch.correction.keyLabel}`
                         : null}
                       {pitch.correction &&
+                      pitch.correction.mergedFrom > pitch.correction.mergedTo
+                        ? ` · 병합 ${pitch.correction.mergedFrom}→${pitch.correction.mergedTo}`
+                        : null}
+                      {pitch.correction &&
                       (pitch.correction.snappedCount > 0 ||
                         pitch.correction.removedCount > 0)
                         ? ` · 보정(스냅 ${pitch.correction.snappedCount} / 제거 ${pitch.correction.removedCount})`

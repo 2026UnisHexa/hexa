@@ -84,7 +84,8 @@ export async function audioBufferToNotes(
   const notes = noteFramesToTime(
     addPitchBendsToNoteEvents(
       contours,
-      outputToNotesPoly(frames, onsets, 0.5, 0.3, 5),
+      // Higher min note length (~11 frames ≈ 128ms) reduces over-segmentation
+      outputToNotesPoly(frames, onsets, 0.5, 0.35, 11),
     ),
   )
 

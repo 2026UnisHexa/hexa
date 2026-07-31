@@ -6,6 +6,7 @@ import {
   formatKeyLabel,
   type DetectedKey,
 } from '../lib/keyCorrection'
+import { mergeShortNotes } from '../lib/mergeNotes'
 import type { MelodyNote } from '../types/midi'
 
 export type PitchCorrectionInfo = {
@@ -13,6 +14,8 @@ export type PitchCorrectionInfo = {
   keyLabel: string
   snappedCount: number
   removedCount: number
+  mergedFrom: number
+  mergedTo: number
 }
 
 export type TranscribeResult = {
@@ -53,16 +56,20 @@ export function useBasicPitch() {
           amplitude: Number.isFinite(n.amplitude) ? n.amplitude : 0.6,
         }))
 
-      const corrected = correctMelodyToKey(mapped)
+      const merged = mergeShortNotes(mapped)
+      const corrected = correctMelodyToKey(merged.notes)
       const info: PitchCorrectionInfo = {
         key: corrected.key,
         keyLabel: formatKeyLabel(corrected.key),
         snappedCount: corrected.snappedCount,
         removedCount: corrected.removedCount,
+        mergedFrom: merged.before,
+        mergedTo: merged.after,
       }
 
       console.log('[useBasicPitch] notes', {
         raw: mapped.length,
+        merged: merged.after,
         corrected: corrected.notes.length,
         ...info,
       })
