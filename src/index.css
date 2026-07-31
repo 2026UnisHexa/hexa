@@ -1913,6 +1913,18 @@ img {
   border-color: var(--color-primary);
 }
 
+.mypage__item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.mypage__preview-hint {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+}
+
 .marketplace__title {
   margin: 0 0 8px;
   font-size: 1.75rem;

@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { MarketplaceListing } from '../../types/listing'
 import type { UserProfile } from '../../types/user'
+import {
+  playListingPreview,
+  stopListingPreview,
+} from '../../lib/listingPreview'
 
 type Props = {
   profile: UserProfile
@@ -99,6 +103,36 @@ export function MyPageView({
 }: Props) {
   const mine = listings
   const totalValue = mine.reduce((sum, l) => sum + l.price, 0)
+  const [playingId, setPlayingId] = useState<string | null>(null)
+  const [loadingId, setLoadingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    return () => {
+      stopListingPreview()
+    }
+  }, [])
+
+  async function togglePlay(item: MarketplaceListing) {
+    if (playingId === item.id) {
+      stopListingPreview()
+      setPlayingId(null)
+      setLoadingId(null)
+      return
+    }
+
+    stopListingPreview()
+    setPlayingId(null)
+    setLoadingId(item.id)
+    try {
+      setPlayingId(item.id)
+      await playListingPreview(item)
+    } catch (err) {
+      console.warn('[MyPageView] preview failed', err)
+    } finally {
+      setLoadingId(null)
+      setPlayingId((current) => (current === item.id ? null : current))
+    }
+  }
 
   return (
     <section className="mypage">
@@ -190,30 +224,57 @@ export function MyPageView({
             </p>
           ) : (
             <ul className="mypage__list">
-              {mine.map((item) => (
-                <li key={item.id} className="mypage__item">
-                  <div className="mypage__item-main">
-                    <span className="market-card__badge">{item.genreLabel}</span>
-                    <h3>{item.title}</h3>
-                    <p className="market-card__meta">
-                      {item.chordLabel ? `${item.chordLabel} · ` : ''}
-                      {formatDate(item.createdAt)}
-                    </p>
-                    <ListingPriceEditor
-                      listingId={item.id}
-                      price={item.price}
-                      onSave={(price) => onUpdateListingPrice(item.id, price)}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    className="btn btn--ghost"
-                    onClick={() => onDeleteListing(item.id)}
-                  >
-                    삭제
-                  </button>
-                </li>
-              ))}
+              {mine.map((item) => {
+                const playing = playingId === item.id
+                const loading = loadingId === item.id
+                return (
+                  <li key={item.id} className="mypage__item">
+                    <div className="mypage__item-main">
+                      <span className="market-card__badge">{item.genreLabel}</span>
+                      <h3>{item.title}</h3>
+                      <p className="market-card__meta">
+                        {item.chordLabel ? `${item.chordLabel} · ` : ''}
+                        {item.tempoBpm} BPM · {formatDate(item.createdAt)}
+                      </p>
+                      <ListingPriceEditor
+                        listingId={item.id}
+                        price={item.price}
+                        onSave={(price) => onUpdateListingPrice(item.id, price)}
+                      />
+                      <div className="mypage__item-actions">
+                        <button
+                          type="button"
+                          className={`btn ${playing ? 'btn--secondary' : 'btn--primary'}`}
+                          onClick={() => void togglePlay(item)}
+                          disabled={loading && !playing}
+                        >
+                          {loading && !playing
+                            ? '준비 중…'
+                            : playing
+                              ? '정지'
+                              : '미리듣기'}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn--ghost"
+                          onClick={() => {
+                            if (playingId === item.id) {
+                              stopListingPreview()
+                              setPlayingId(null)
+                            }
+                            onDeleteListing(item.id)
+                          }}
+                        >
+                          삭제
+                        </button>
+                      </div>
+                      <p className="muted mypage__preview-hint">
+                        데모 미리듣기 (실제 녹음 파일은 저장되지 않음)
+                      </p>
+                    </div>
+                  </li>
+                )
+              })}
             </ul>
           )}
         </section>
