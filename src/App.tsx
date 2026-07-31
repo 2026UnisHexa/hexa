@@ -78,6 +78,42 @@ function loadOrCreateProfile(): UserProfile {
 
 const SEED_LISTINGS: MarketplaceListing[] = [
   {
+    id: 'mine-seed-1',
+    title: '아침 창가 허밍',
+    price: 1500,
+    genreId: 'ballad',
+    genreLabel: '발라드',
+    chordLabel: '안정적인 팝 진행',
+    noteCount: 28,
+    tempoBpm: 76,
+    createdAt: '2026-07-30T08:20:00.000Z',
+    mine: true,
+  },
+  {
+    id: 'mine-seed-2',
+    title: '퇴근길 휘파람 멜로디',
+    price: 1800,
+    genreId: 'pop',
+    genreLabel: '팝',
+    chordLabel: '밝은 메이저 진행',
+    noteCount: 32,
+    tempoBpm: 108,
+    createdAt: '2026-07-31T19:05:00.000Z',
+    mine: true,
+  },
+  {
+    id: 'mine-seed-3',
+    title: '비 오는 오후 스케치',
+    price: 2200,
+    genreId: 'jazz',
+    genreLabel: '재즈',
+    chordLabel: '부드러운 진행',
+    noteCount: 40,
+    tempoBpm: 92,
+    createdAt: '2026-08-01T14:40:00.000Z',
+    mine: true,
+  },
+  {
     id: 'seed-1',
     title: '새벽 창가의 허밍',
     price: 1200,
@@ -137,7 +173,7 @@ export default function App() {
   const [suggestLoading, setSuggestLoading] = useState(false)
   const [genreId, setGenreId] = useState<GenreId>('pop')
   const [listings, setListings] = useLocalStorage<MarketplaceListing[]>(
-    'marketplace-listings',
+    'marketplace-listings-v2',
     SEED_LISTINGS,
   )
   const [profile, setProfile] = useLocalStorage<UserProfile>(
@@ -299,10 +335,7 @@ export default function App() {
         ) : null}
 
         {view === 'marketplace' ? (
-          <MarketplaceView
-            listings={listings}
-            onCreate={() => navigate('create')}
-          />
+          <MarketplaceView listings={listings} />
         ) : null}
 
         {view === 'mypage' ? (

@@ -250,3 +250,48 @@ npm run dev
 
 Vercel 배포 시 Project Settings → Environment Variables에 `OPENAI_API_KEY`를 등록한다.  
 코드 진행 제안은 `api/suggest-chords` 서버리스 함수를 통하며, 브라우저에는 API 키가 내려가지 않는다. (서버 DB 없음)
+
+---
+
+## 사용된 오픈 소스
+
+이 프로젝트는 아래 오픈 소스에 의존합니다. (라이선스는 각 저장소 기준)
+
+### 런타임 / 핵심 라이브러리
+
+| 이름 | 용도 | 링크 |
+|------|------|------|
+| [React](https://react.dev/) | UI | [facebook/react](https://github.com/facebook/react) |
+| [Vite](https://vite.dev/) | 빌드·개발 서버 | [vitejs/vite](https://github.com/vitejs/vite) |
+| [TypeScript](https://www.typescriptlang.org/) | 타입 시스템 | [microsoft/TypeScript](https://github.com/microsoft/TypeScript) |
+| [@spotify/basic-pitch](https://github.com/spotify/basic-pitch) | 허밍 → MIDI 피치 인식 (TensorFlow.js) | Apache-2.0 |
+| [Tone.js](https://tonejs.github.io/) (`tone`) | 멜로디·반주 재생, Sampler | [Tonejs/Tone.js](https://github.com/Tonejs/Tone.js) |
+| [@tonejs/midi](https://github.com/Tonejs/Midi) | MIDI 파일 생성·다운로드 | MIT |
+| [OpenSheetMusicDisplay](https://opensheetmusicdisplay.org/) | MusicXML 오선보 렌더링 | [opensheetmusicdisplay/opensheetmusicdisplay](https://github.com/opensheetmusicdisplay/opensheetmusicdisplay) |
+| [VexFlow](https://www.vexflow.com/) | OSMD 의존 (악보 렌더링 엔진) | [vexflow/vexflow](https://github.com/vexflow/vexflow) |
+| [OpenAI Node SDK](https://github.com/openai/openai-node) (`openai`) | 서버사이드 코드 진행 제안 API 클라이언트 | MIT |
+| [TensorFlow.js](https://www.tensorflow.org/js) | Basic Pitch 모델 추론 (basic-pitch 의존) | Apache-2.0 |
+
+### 개발 도구
+
+| 이름 | 용도 | 링크 |
+|------|------|------|
+| [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react) | Vite React 플러그인 | MIT |
+| [oxlint](https://github.com/oxc-project/oxc) | 린트 | MIT |
+| [@types/react](https://github.com/DefinitelyTyped/DefinitelyTyped) / `@types/react-dom` / `@types/node` | TypeScript 타입 정의 | MIT |
+
+### 에셋 · 폰트 · 샘플
+
+| 이름 | 용도 | 링크 / 출처 |
+|------|------|-------------|
+| [Pretendard](https://github.com/orioncactus/pretendard) | UI 폰트 (CDN) | SIL OFL |
+| [Salamander Grand Piano](https://tonejs.github.io/audio/salamander/) | Tone.js 피아노 Sampler 샘플 | Tone.js 데모 샘플 (원본: Salamander piano, CC BY 3.0) |
+| [tonejs-instruments (guitar-acoustic)](https://github.com/nbrosowsky/tonejs-instruments) | 어쿠스틱 기타 Sampler 샘플 | 샘플셋 출처 저장소 라이선스 참고 |
+
+### 알고리즘 · 참고
+
+| 이름 | 용도 |
+|------|------|
+| Krumhansl–Kessler key profiles | 조성(키) 추정에 사용한 피치 클래스 프로파일 (학술 공개 프로파일) |
+
+> OpenAI API 자체는 상용 서비스이며, 위 표의 `openai` 패키지는 API 호출용 **오픈 소스 SDK**입니다.
