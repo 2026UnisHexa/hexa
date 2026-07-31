@@ -1,43 +1,20 @@
-import * as Tone from 'tone'
 import type { ChordVoicing } from '../types/chord'
+import { getInstrument, releaseInstrumentNotes } from './instruments'
 
-let synth: Tone.PolySynth | Tone.Sampler | null = null
-let usingSampler = false
 let chordWaitTimer: ReturnType<typeof setTimeout> | null = null
 let chordWaitResolve: (() => void) | null = null
 let chordGeneration = 0
+const chordNoteTimers = new Set<ReturnType<typeof setTimeout>>()
 
-async function getInstrument(): Promise<Tone.PolySynth | Tone.Sampler> {
-  if (synth) return synth
-
-  await Tone.start()
-
-  try {
-    const sampler = new Tone.Sampler({
-      urls: {
-        C4: 'C4.mp3',
-        'D#4': 'Ds4.mp3',
-        'F#4': 'Fs4.mp3',
-        A4: 'A4.mp3',
-      },
-      baseUrl: 'https://tonejs.github.io/audio/salamander/',
-    }).toDestination()
-    await Tone.loaded()
-    synth = sampler
-    usingSampler = true
-    console.log('[chordPlayback] using Sampler (piano)')
-    return sampler
-  } catch (err) {
-    console.warn('[chordPlayback] Sampler failed, PolySynth fallback', err)
-    const poly = new Tone.PolySynth(Tone.Synth).toDestination()
-    synth = poly
-    usingSampler = false
-    return poly
+function clearChordNoteTimers(): void {
+  for (const timer of chordNoteTimers) {
+    clearTimeout(timer)
   }
+  chordNoteTimers.clear()
 }
 
 export function isUsingPianoSampler(): boolean {
-  return usingSampler
+  return true
 }
 
 export async function playChordProgression(
@@ -45,18 +22,34 @@ export async function playChordProgression(
   chordDurationSeconds = 0.8,
 ): Promise<void> {
   const generation = ++chordGeneration
-  const instrument = await getInstrument()
+  clearChordNoteTimers()
+  if (chordWaitTimer !== null) {
+    clearTimeout(chordWaitTimer)
+    chordWaitTimer = null
+  }
+  if (chordWaitResolve) {
+    const resolve = chordWaitResolve
+    chordWaitResolve = null
+    resolve()
+  }
+
+  const instrument = await getInstrument('piano')
   if (generation !== chordGeneration) return
 
-  const now = Tone.now()
+  releaseInstrumentNotes('piano')
 
   chords.forEach((chord, i) => {
-    const time = now + i * chordDurationSeconds
-    instrument.triggerAttackRelease(
-      chord.notes,
-      chordDurationSeconds * 0.9,
-      time,
-    )
+    const delayMs = i * chordDurationSeconds * 1000
+    const timer = setTimeout(() => {
+      chordNoteTimers.delete(timer)
+      if (generation !== chordGeneration) return
+      instrument.triggerAttackRelease(
+        chord.notes,
+        chordDurationSeconds * 0.9,
+        undefined,
+      )
+    }, delayMs)
+    chordNoteTimers.add(timer)
   })
 
   await new Promise<void>((resolve) => {
@@ -71,6 +64,7 @@ export async function playChordProgression(
 
 export async function stopChordPlayback(): Promise<void> {
   chordGeneration += 1
+  clearChordNoteTimers()
   if (chordWaitTimer !== null) {
     clearTimeout(chordWaitTimer)
     chordWaitTimer = null
@@ -80,14 +74,5 @@ export async function stopChordPlayback(): Promise<void> {
     chordWaitResolve = null
     resolve()
   }
-  if (!synth) return
-  try {
-    synth.releaseAll()
-    // Dispose so already-scheduled future notes cannot fire.
-    synth.dispose()
-  } catch {
-    // already disposed
-  }
-  synth = null
-  usingSampler = false
+  releaseInstrumentNotes('piano')
 }

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   playMelody,
   playMelodyWithAccompaniment,
@@ -8,13 +8,55 @@ import {
   playChordProgression,
   stopChordPlayback,
 } from '../lib/chordPlayback'
+import {
+  getInstrument,
+  isInstrumentReady,
+  type InstrumentId,
+} from '../lib/instruments'
 import type { ChordVoicing } from '../types/chord'
 import type { GenrePreset } from '../types/genre'
 import type { MelodyNote } from '../types/midi'
 
-export function usePlayback() {
+export function useInstrument(instrumentId: InstrumentId) {
+  const [isLoading, setIsLoading] = useState(
+    () => !isInstrumentReady(instrumentId),
+  )
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    if (isInstrumentReady(instrumentId)) {
+      setIsLoading(false)
+      setError(null)
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+    void getInstrument(instrumentId)
+      .then(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setIsLoading(false)
+          setError(err instanceof Error ? err.message : 'Instrument load failed')
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [instrumentId])
+
+  return { isLoading, error }
+}
+
+export function usePlayback(instrumentId: InstrumentId = 'piano') {
   const [playing, setPlaying] = useState(false)
   const generationRef = useRef(0)
+  const instrumentIdRef = useRef(instrumentId)
+  instrumentIdRef.current = instrumentId
 
   const stop = useCallback(() => {
     generationRef.current += 1
@@ -26,7 +68,7 @@ export function usePlayback() {
     const gen = ++generationRef.current
     setPlaying(true)
     try {
-      await playMelody(notes)
+      await playMelody(notes, instrumentIdRef.current)
     } finally {
       if (gen === generationRef.current) setPlaying(false)
     }
@@ -41,7 +83,12 @@ export function usePlayback() {
       const gen = ++generationRef.current
       setPlaying(true)
       try {
-        await playMelodyWithAccompaniment(notes, chords, preset)
+        await playMelodyWithAccompaniment(
+          notes,
+          chords,
+          preset,
+          instrumentIdRef.current,
+        )
       } finally {
         if (gen === generationRef.current) setPlaying(false)
       }
@@ -98,7 +145,6 @@ export function useChordPlayback() {
   const play = useCallback(
     async (chords: ChordVoicing[], duration = 0.8) => {
       const gen = ++generationRef.current
-      // Stop any in-flight progression before starting a new one.
       await stopChordPlayback()
       if (gen !== generationRef.current) return
       setPlaying(true)

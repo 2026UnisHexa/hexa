@@ -12,11 +12,16 @@ import { LoadingState } from './components/common/LoadingState'
 import { ErrorMessage } from './components/common/ErrorMessage'
 import { useRecorder } from './hooks/useRecorder'
 import { useBasicPitch } from './hooks/useBasicPitch'
-import { useChordPlayback, usePlayback } from './hooks/usePlayback'
+import {
+  useChordPlayback,
+  useInstrument,
+  usePlayback,
+} from './hooks/usePlayback'
 import { suggestChordProgressions } from './lib/claude'
 import { melodyNotesToMusicXml } from './lib/midiToMusicXml'
 import { downloadBlob, melodyNotesToMidiBlob } from './lib/midiDownload'
 import { getGenrePreset } from './lib/presets'
+import type { InstrumentId } from './lib/instruments'
 import {
   estimateTempoBpm,
   melodySummaryNoteCount,
@@ -28,7 +33,10 @@ import type { GenreId } from './types/genre'
 export default function App() {
   const recorder = useRecorder()
   const pitch = useBasicPitch()
-  const playback = usePlayback()
+  const [selectedInstrument, setSelectedInstrument] =
+    useState<InstrumentId>('piano')
+  const instrument = useInstrument(selectedInstrument)
+  const playback = usePlayback(selectedInstrument)
   const chordPlayback = useChordPlayback()
   const stopChords = chordPlayback.stop
 
@@ -139,6 +147,9 @@ export default function App() {
       ) : null}
       {pitch.error ? <ErrorMessage message={pitch.error} /> : null}
       {pipelineError ? <ErrorMessage message={pipelineError} /> : null}
+      {instrument.error ? (
+        <ErrorMessage message={`악기 로드 실패: ${instrument.error}`} />
+      ) : null}
 
       {hasMelody ? (
         <p>
@@ -151,7 +162,16 @@ export default function App() {
         musicXml={musicXml}
         hasMelody={hasMelody}
         isPlayingMelody={isPlayingMelody}
-        onToggleMelody={() => playback.toggleMelody(pitch.notes)}
+        instrumentLoading={instrument.isLoading}
+        selectedInstrument={selectedInstrument}
+        onInstrumentChange={(id) => {
+          if (isPlayingMelody) playback.stop()
+          setSelectedInstrument(id)
+        }}
+        onToggleMelody={() => {
+          if (instrument.isLoading) return
+          playback.toggleMelody(pitch.notes)
+        }}
       />
 
       <ChordSuggestions
@@ -181,15 +201,21 @@ export default function App() {
       <GenrePreset value={genreId} onChange={setGenreId} />
 
       <PlaybackControls
-        melodyDisabled={!hasMelody}
-        accompanimentDisabled={!hasMelody || !selectedSuggestion}
+        melodyDisabled={!hasMelody || instrument.isLoading}
+        accompanimentDisabled={
+          !hasMelody || !selectedSuggestion || instrument.isLoading
+        }
         playing={isPlayingMelody}
-        onToggleMelody={() => playback.toggleMelody(pitch.notes)}
+        onToggleMelody={() => {
+          if (instrument.isLoading) return
+          playback.toggleMelody(pitch.notes)
+        }}
         onToggleWithAccompaniment={() => {
           if (!selectedSuggestion) {
             if (isPlayingMelody) playback.stop()
             return
           }
+          if (instrument.isLoading) return
           playback.toggleWithAccompaniment(
             pitch.notes,
             selectedSuggestion.chords,

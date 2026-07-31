@@ -2,12 +2,18 @@ import * as Tone from 'tone'
 import type { ChordVoicing } from '../types/chord'
 import type { GenrePreset } from '../types/genre'
 import type { MelodyNote } from '../types/midi'
+import type { InstrumentId, PlayableInstrument } from './instruments'
+import {
+  getInstrument,
+  midiToNoteName,
+  releaseInstrumentNotes,
+} from './instruments'
 import {
   playChordProgression,
   stopChordPlayback,
 } from './chordPlayback'
 
-let activeMelodySynth: Tone.PolySynth | null = null
+let activeMelodyInstrumentId: InstrumentId | null = null
 let activeArpeggioSynth: Tone.Synth | null = null
 const activeTimers = new Set<ReturnType<typeof setTimeout>>()
 const pendingResolvers = new Set<() => void>()
@@ -52,14 +58,9 @@ export function stopPlayback(): void {
   playbackGeneration += 1
   clearAllTimers()
 
-  if (activeMelodySynth) {
-    try {
-      activeMelodySynth.releaseAll()
-      activeMelodySynth.dispose()
-    } catch {
-      // already disposed
-    }
-    activeMelodySynth = null
+  if (activeMelodyInstrumentId) {
+    releaseInstrumentNotes(activeMelodyInstrumentId)
+    activeMelodyInstrumentId = null
   }
 
   if (activeArpeggioSynth) {
@@ -74,60 +75,73 @@ export function stopPlayback(): void {
   void stopChordPlayback()
 }
 
-async function getMelodySynth(): Promise<Tone.PolySynth> {
-  await Tone.start()
-  return new Tone.PolySynth(Tone.Synth).toDestination()
-}
-
-async function playMelodyInternal(
+function scheduleMelodyNotes(
+  instrument: PlayableInstrument,
   notes: MelodyNote[],
   generation: number,
-): Promise<void> {
-  if (notes.length === 0) return
-  console.log('[playMelody] start', { noteCount: notes.length })
-
-  const synth = await getMelodySynth()
-  if (generation !== playbackGeneration) {
-    synth.dispose()
-    return
-  }
-  activeMelodySynth = synth
-
-  const now = Tone.now()
+): number {
   const sorted = [...notes].sort(
     (a, b) => a.startTimeSeconds - b.startTimeSeconds,
   )
   const t0 = sorted[0]!.startTimeSeconds
 
   for (const note of sorted) {
-    const freq = Tone.Midi(note.pitchMidi).toFrequency()
-    const start = now + (note.startTimeSeconds - t0)
+    const offsetMs = (note.startTimeSeconds - t0) * 1000
     const dur = Math.max(0.05, note.durationSeconds)
     const velocity = Math.min(1, Math.max(0.2, note.amplitude || 0.6))
-    synth.triggerAttackRelease(freq, dur, start, velocity)
+    const pitch = midiToNoteName(note.pitchMidi)
+
+    const timer = setTimeout(() => {
+      activeTimers.delete(timer)
+      if (generation !== playbackGeneration) return
+      instrument.triggerAttackRelease(pitch, dur, undefined, velocity)
+    }, Math.max(0, offsetMs))
+    activeTimers.add(timer)
   }
 
-  const end =
+  return (
     sorted.reduce(
       (max, n) => Math.max(max, n.startTimeSeconds + n.durationSeconds),
       0,
     ) - t0
+  )
+}
+
+async function playMelodyInternal(
+  notes: MelodyNote[],
+  generation: number,
+  instrumentId: InstrumentId,
+): Promise<void> {
+  if (notes.length === 0) return
+  console.log('[playMelody] start', {
+    noteCount: notes.length,
+    instrumentId,
+  })
+
+  const instrument = await getInstrument(instrumentId)
+  if (generation !== playbackGeneration) return
+
+  activeMelodyInstrumentId = instrumentId
+  releaseInstrumentNotes(instrumentId)
+
+  const end = scheduleMelodyNotes(instrument, notes, generation)
   await waitForPlayback(end * 1000 + 200, generation)
 
   if (generation !== playbackGeneration) return
-
-  if (activeMelodySynth === synth) {
-    synth.dispose()
-    activeMelodySynth = null
+  if (activeMelodyInstrumentId === instrumentId) {
+    activeMelodyInstrumentId = null
   }
   console.log('[playMelody] end')
 }
 
 /** Play melody notes with original startTime/duration timing (not equalized beats). */
-export async function playMelody(notes: MelodyNote[]): Promise<void> {
+export async function playMelody(
+  notes: MelodyNote[],
+  instrumentId: InstrumentId = 'piano',
+): Promise<void> {
   stopPlayback()
   const generation = playbackGeneration
-  await playMelodyInternal(notes, generation)
+  await playMelodyInternal(notes, generation, instrumentId)
 }
 
 /**
@@ -180,11 +194,12 @@ export async function playMelodyWithAccompaniment(
   notes: MelodyNote[],
   chords: ChordVoicing[],
   preset: GenrePreset,
+  instrumentId: InstrumentId = 'piano',
 ): Promise<void> {
   stopPlayback()
   const generation = playbackGeneration
   await Promise.all([
-    playMelodyInternal(notes, generation),
+    playMelodyInternal(notes, generation, instrumentId),
     playAccompaniment(chords, preset),
   ])
 }

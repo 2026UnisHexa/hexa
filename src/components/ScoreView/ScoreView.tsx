@@ -1,10 +1,17 @@
 import { useEffect, useRef } from 'react'
 import { OpenSheetMusicDisplay } from 'opensheetmusicdisplay'
+import {
+  INSTRUMENT_OPTIONS,
+  type InstrumentId,
+} from '../../lib/instruments'
 
 type Props = {
   musicXml: string | null
   hasMelody?: boolean
   isPlayingMelody?: boolean
+  instrumentLoading?: boolean
+  selectedInstrument?: InstrumentId
+  onInstrumentChange?: (id: InstrumentId) => void
   onToggleMelody?: () => void
 }
 
@@ -12,6 +19,9 @@ export function ScoreView({
   musicXml,
   hasMelody = false,
   isPlayingMelody = false,
+  instrumentLoading = false,
+  selectedInstrument = 'piano',
+  onInstrumentChange,
   onToggleMelody,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -62,12 +72,32 @@ export function ScoreView({
           <button
             type="button"
             onClick={onToggleMelody}
-            disabled={!hasMelody}
+            disabled={!hasMelody || instrumentLoading}
           >
-            {isPlayingMelody
-              ? '⏹ 정지'
-              : '▶ 인식된 멜로디 듣기'}
-          </button>
+            {instrumentLoading
+              ? '악기 로딩 중…'
+              : isPlayingMelody
+                ? '⏹ 정지'
+                : '▶ 인식된 멜로디 듣기'}
+          </button>{' '}
+          {onInstrumentChange ? (
+            <label>
+              악기{' '}
+              <select
+                value={selectedInstrument}
+                onChange={(e) =>
+                  onInstrumentChange(e.target.value as InstrumentId)
+                }
+              >
+                {INSTRUMENT_OPTIONS.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          {instrumentLoading ? <span> (샘플 로딩…)</span> : null}
         </p>
       ) : null}
       {!musicXml ? <p>녹음 후 인식되면 여기에 오선보가 표시됩니다.</p> : null}
