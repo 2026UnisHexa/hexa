@@ -1,12 +1,24 @@
 import { useCallback, useState } from 'react'
-import { playMelody, playMelodyWithAccompaniment } from '../lib/accompaniment'
-import { playChordProgression } from '../lib/chordPlayback'
+import {
+  playMelody,
+  playMelodyWithAccompaniment,
+  stopPlayback,
+} from '../lib/accompaniment'
+import {
+  playChordProgression,
+  stopChordPlayback,
+} from '../lib/chordPlayback'
 import type { ChordVoicing } from '../types/chord'
 import type { GenrePreset } from '../types/genre'
 import type { MelodyNote } from '../types/midi'
 
 export function usePlayback() {
   const [playing, setPlaying] = useState(false)
+
+  const stop = useCallback(() => {
+    stopPlayback()
+    setPlaying(false)
+  }, [])
 
   const playNotes = useCallback(async (notes: MelodyNote[]) => {
     setPlaying(true)
@@ -33,11 +45,16 @@ export function usePlayback() {
     [],
   )
 
-  return { playing, playNotes, playWithAccompaniment }
+  return { playing, playNotes, playWithAccompaniment, stop }
 }
 
 export function useChordPlayback() {
   const [playing, setPlaying] = useState(false)
+
+  const stop = useCallback(() => {
+    void stopChordPlayback()
+    setPlaying(false)
+  }, [])
 
   const play = useCallback(
     async (chords: ChordVoicing[], duration = 0.8) => {
@@ -51,5 +68,5 @@ export function useChordPlayback() {
     [],
   )
 
-  return { playing, play }
+  return { playing, play, stop }
 }

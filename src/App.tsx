@@ -132,6 +132,7 @@ export default function App() {
         hasMelody={hasMelody}
         playing={playback.playing}
         onPlayMelody={() => void playback.playNotes(pitch.notes)}
+        onStop={playback.stop}
       />
 
       <ChordSuggestions
@@ -162,6 +163,7 @@ export default function App() {
             genrePreset,
           )
         }}
+        onStop={playback.stop}
       />
 
       <DownloadButtons

@@ -3,6 +3,9 @@ import type { ChordVoicing } from '../types/chord'
 
 let synth: Tone.PolySynth | Tone.Sampler | null = null
 let usingSampler = false
+let chordWaitTimer: ReturnType<typeof setTimeout> | null = null
+let chordWaitResolve: (() => void) | null = null
+let chordGeneration = 0
 
 async function getInstrument(): Promise<Tone.PolySynth | Tone.Sampler> {
   if (synth) return synth
@@ -41,7 +44,10 @@ export async function playChordProgression(
   chords: ChordVoicing[],
   chordDurationSeconds = 0.8,
 ): Promise<void> {
+  const generation = ++chordGeneration
   const instrument = await getInstrument()
+  if (generation !== chordGeneration) return
+
   const now = Tone.now()
 
   chords.forEach((chord, i) => {
@@ -53,12 +59,35 @@ export async function playChordProgression(
     )
   })
 
-  await new Promise((r) =>
-    setTimeout(r, chords.length * chordDurationSeconds * 1000 + 100),
-  )
+  await new Promise<void>((resolve) => {
+    chordWaitResolve = resolve
+    chordWaitTimer = setTimeout(() => {
+      chordWaitTimer = null
+      chordWaitResolve = null
+      resolve()
+    }, chords.length * chordDurationSeconds * 1000 + 100)
+  })
 }
 
 export async function stopChordPlayback(): Promise<void> {
+  chordGeneration += 1
+  if (chordWaitTimer !== null) {
+    clearTimeout(chordWaitTimer)
+    chordWaitTimer = null
+  }
+  if (chordWaitResolve) {
+    const resolve = chordWaitResolve
+    chordWaitResolve = null
+    resolve()
+  }
   if (!synth) return
-  synth.releaseAll()
+  try {
+    synth.releaseAll()
+    // Dispose so already-scheduled future notes cannot fire.
+    synth.dispose()
+  } catch {
+    // already disposed
+  }
+  synth = null
+  usingSampler = false
 }

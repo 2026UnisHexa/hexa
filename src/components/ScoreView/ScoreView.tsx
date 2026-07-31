@@ -6,6 +6,7 @@ type Props = {
   hasMelody?: boolean
   playing?: boolean
   onPlayMelody?: () => void
+  onStop?: () => void
 }
 
 export function ScoreView({
@@ -13,6 +14,7 @@ export function ScoreView({
   hasMelody = false,
   playing = false,
   onPlayMelody,
+  onStop,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const osmdRef = useRef<OpenSheetMusicDisplay | null>(null)
@@ -65,6 +67,9 @@ export function ScoreView({
             disabled={!hasMelody || playing}
           >
             {playing ? '⏸ 재생 중...' : '▶ 인식된 멜로디 듣기'}
+          </button>{' '}
+          <button type="button" onClick={onStop} disabled={!playing}>
+            ⏹ 정지
           </button>
         </p>
       ) : null}

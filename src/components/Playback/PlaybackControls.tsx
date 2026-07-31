@@ -4,6 +4,7 @@ type Props = {
   playing: boolean
   onPlayMelody: () => void
   onPlayWithAccompaniment: () => void
+  onStop: () => void
 }
 
 export function PlaybackControls({
@@ -12,6 +13,7 @@ export function PlaybackControls({
   playing,
   onPlayMelody,
   onPlayWithAccompaniment,
+  onStop,
 }: Props) {
   return (
     <section>
@@ -29,6 +31,9 @@ export function PlaybackControls({
         disabled={accompanimentDisabled || playing}
       >
         멜로디 + 반주 재생
+      </button>{' '}
+      <button type="button" onClick={onStop} disabled={!playing}>
+        ⏹ 정지
       </button>
       {playing ? <p>재생 중…</p> : null}
     </section>
