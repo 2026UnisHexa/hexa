@@ -15,6 +15,7 @@ import { DownloadButtons } from './components/Download/DownloadButtons'
 import { ListForSaleButton } from './components/Marketplace/ListForSaleButton'
 import { PriceInputModal } from './components/Marketplace/PriceInputModal'
 import { ListingSuccessModal } from './components/Marketplace/ListingSuccessModal'
+import { MyPageView } from './components/MyPage/MyPageView'
 import { LoadingState } from './components/common/LoadingState'
 import { ErrorMessage } from './components/common/ErrorMessage'
 import { useRecorder } from './hooks/useRecorder'
@@ -50,8 +51,30 @@ import {
 import type { ChordSuggestion } from './types/chord'
 import type { GenreId } from './types/genre'
 import type { MarketplaceListing } from './types/listing'
+import type { UserProfile } from './types/user'
+import { AUTH_LOGIN_KEY, USER_STORAGE_KEY } from './types/user'
+import { loadJson, saveJson } from './lib/storage'
 
-type View = 'home' | 'create' | 'marketplace'
+type View = 'home' | 'create' | 'marketplace' | 'mypage'
+
+function defaultProfile(loginId: string): UserProfile {
+  return {
+    loginId,
+    displayName: loginId,
+    bio: '',
+    joinedAt: new Date().toISOString(),
+  }
+}
+
+function loadOrCreateProfile(): UserProfile {
+  const saved = loadJson<UserProfile>(USER_STORAGE_KEY)
+  const loginId =
+    loadJson<string>(AUTH_LOGIN_KEY) ?? saved?.loginId ?? 'guest'
+  if (saved && saved.loginId === loginId) return saved
+  const profile = defaultProfile(loginId)
+  saveJson(USER_STORAGE_KEY, profile)
+  return profile
+}
 
 const SEED_LISTINGS: MarketplaceListing[] = [
   {
@@ -117,6 +140,10 @@ export default function App() {
     'marketplace-listings',
     SEED_LISTINGS,
   )
+  const [profile, setProfile] = useLocalStorage<UserProfile>(
+    USER_STORAGE_KEY,
+    loadOrCreateProfile(),
+  )
   const [priceOpen, setPriceOpen] = useState(false)
   const [successOpen, setSuccessOpen] = useState(false)
   const [listingTitle, setListingTitle] = useState('나의 허밍 멜로디')
@@ -155,6 +182,20 @@ export default function App() {
       setMaxReached((m) => Math.max(m, 1))
     }
   }
+
+  function handleLogout() {
+    try {
+      localStorage.removeItem(`hexa:${AUTH_LOGIN_KEY}`)
+    } catch {
+      // ignore
+    }
+    window.location.assign('/login')
+  }
+
+  const avatarLabel = (profile.displayName || profile.loginId || 'ME')
+    .trim()
+    .slice(0, 2)
+    .toUpperCase() || 'ME'
 
   function registerListing() {
     const trimmed = listingTitle.trim()
@@ -243,7 +284,11 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <AppHeader view={view} onNavigate={navigate} />
+      <AppHeader
+        view={view}
+        onNavigate={navigate}
+        avatarLabel={avatarLabel}
+      />
 
       <div className="app-body">
         {view === 'home' ? (
@@ -257,6 +302,20 @@ export default function App() {
           <MarketplaceView
             listings={listings}
             onCreate={() => navigate('create')}
+          />
+        ) : null}
+
+        {view === 'mypage' ? (
+          <MyPageView
+            profile={profile}
+            listings={listings}
+            onProfileChange={setProfile}
+            onDeleteListing={(id) =>
+              setListings((prev) => prev.filter((l) => l.id !== id))
+            }
+            onCreate={() => navigate('create')}
+            onOpenMarketplace={() => navigate('marketplace')}
+            onLogout={handleLogout}
           />
         ) : null}
 
