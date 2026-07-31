@@ -16,7 +16,7 @@ import { ListForSaleButton } from './components/Marketplace/ListForSaleButton'
 import { PriceInputModal } from './components/Marketplace/PriceInputModal'
 import { ListingSuccessModal } from './components/Marketplace/ListingSuccessModal'
 import { MyPageView } from './components/MyPage/MyPageView'
-import { VoiceMemo } from './components/VoiceMemo/VoiceMemo'
+import { VoiceLyricsView } from './components/VoiceMemo/VoiceLyricsView'
 import { LoadingState } from './components/common/LoadingState'
 import { ErrorMessage } from './components/common/ErrorMessage'
 import { useRecorder } from './hooks/useRecorder'
@@ -55,6 +55,7 @@ import type { MarketplaceListing } from './types/listing'
 import type { UserProfile } from './types/user'
 import { AUTH_LOGIN_KEY, USER_STORAGE_KEY } from './types/user'
 import { loadJson, saveJson } from './lib/storage'
+import { clearSession, fetchMe, getAccessToken } from './lib/auth'
 
 type View = 'home' | 'create' | 'marketplace' | 'mypage' | 'voice'
 
@@ -189,6 +190,35 @@ export default function App() {
   const [pipelineError, setPipelineError] = useState<string | null>(null)
   const processedBlobRef = useRef<Blob | null>(null)
 
+  useEffect(() => {
+    const token = getAccessToken()
+    if (!token) return
+
+    let cancelled = false
+    void (async () => {
+      const loginId = await fetchMe()
+      if (cancelled) return
+      if (!loginId) {
+        clearSession()
+        return
+      }
+      setProfile((prev) =>
+        prev.loginId === loginId
+          ? prev
+          : {
+              loginId,
+              displayName: prev.displayName || loginId,
+              bio: prev.bio,
+              joinedAt: prev.joinedAt || new Date().toISOString(),
+            },
+      )
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [setProfile])
+
   const tempoBpm = useMemo(
     () => estimateTempoBpm(pitch.notes),
     [pitch.notes],
@@ -221,11 +251,7 @@ export default function App() {
   }
 
   function handleLogout() {
-    try {
-      localStorage.removeItem(`hexa:${AUTH_LOGIN_KEY}`)
-    } catch {
-      // ignore
-    }
+    clearSession()
     window.location.assign('/login')
   }
 
@@ -330,12 +356,7 @@ export default function App() {
           />
         ) : null}
 
-        {view === 'voice' ? (
-          <div className="voice-memo-page">
-            <h1 className="voice-memo-page__title">말하기 → 텍스트</h1>
-            <VoiceMemo />
-          </div>
-        ) : null}
+        {view === 'voice' ? <VoiceLyricsView /> : null}
 
         {view === 'marketplace' ? (
           <MarketplaceView listings={listings} />

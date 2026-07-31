@@ -5,6 +5,11 @@ import { ErrorMessage } from '../common/ErrorMessage'
 import { useRecorder } from '../../hooks/useRecorder'
 import { useTranscribe } from '../../hooks/useTranscribe'
 
+type Props = {
+  text: string
+  onTextChange: (value: string) => void
+}
+
 function MicIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -27,10 +32,9 @@ function MicIcon() {
   )
 }
 
-export function VoiceMemo() {
+export function VoiceMemo({ text, onTextChange }: Props) {
   const recorder = useRecorder()
   const { loading, error: transcribeError, transcribe, reset } = useTranscribe()
-  const [text, setText] = useState('')
   const [rawText, setRawText] = useState('')
 
   useEffect(() => {
@@ -41,13 +45,13 @@ export function VoiceMemo() {
       const result = await transcribe(recorder.audioBlob!)
       if (cancelled) return
       setRawText(result.raw)
-      setText(result.refined || result.raw)
+      onTextChange(result.refined || result.raw)
     })()
 
     return () => {
       cancelled = true
     }
-  }, [recorder.status, recorder.audioBlob, transcribe])
+  }, [recorder.status, recorder.audioBlob, transcribe, onTextChange])
 
   const recording = recorder.status === 'recording'
 
@@ -79,7 +83,7 @@ export function VoiceMemo() {
               className="btn btn--primary btn--lg"
               onClick={() => {
                 reset()
-                setText('')
+                onTextChange('')
                 setRawText('')
                 void recorder.start()
               }}
@@ -109,15 +113,13 @@ export function VoiceMemo() {
             id="voice-memo-text"
             rows={8}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => onTextChange(e.target.value)}
             placeholder="녹음 후 변환된 문장이 여기에 나타납니다. 직접 수정해도 됩니다."
             disabled={loading}
           />
         </div>
         {rawText && rawText !== text ? (
-          <p className="muted voice-memo__raw">
-            원문(Whisper): {rawText}
-          </p>
+          <p className="muted voice-memo__raw">원문(Whisper): {rawText}</p>
         ) : null}
       </div>
     </section>

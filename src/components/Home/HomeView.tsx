@@ -78,7 +78,7 @@ export function HomeView({ onOpenMarketplace, onCreate, onVoiceMemo }: Props) {
           <span className="home-card__icon">
             <VoiceIcon />
           </span>
-          <span className="home-card__label">말하기 → 텍스트</span>
+          <span className="home-card__label">말하기 → 가사</span>
         </button>
       </div>
     </section>

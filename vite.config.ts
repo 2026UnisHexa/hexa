@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { handleSuggestChords } from './api/suggest-chords.js'
+import { handleSuggestLyrics } from './api/suggest-lyrics.js'
 import { handleTranscribe } from './api/transcribe.js'
 
 /**
@@ -31,6 +32,20 @@ function localDevApis(): Plugin {
         if (url === '/api/transcribe') {
           void handleTranscribe(req, res).catch((err: unknown) => {
             console.error('[vite transcribe]', err)
+            if (!res.headersSent) {
+              res.statusCode = 500
+              res.setHeader('Content-Type', 'application/json')
+              res.end(
+                JSON.stringify({ error: 'Internal server error in dev API' }),
+              )
+            }
+          })
+          return
+        }
+
+        if (url === '/api/suggest-lyrics') {
+          void handleSuggestLyrics(req, res).catch((err: unknown) => {
+            console.error('[vite suggest-lyrics]', err)
             if (!res.headersSent) {
               res.statusCode = 500
               res.setHeader('Content-Type', 'application/json')

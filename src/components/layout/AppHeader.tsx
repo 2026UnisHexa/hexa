@@ -46,7 +46,7 @@ export function AppHeader({
               className={`app-header__link${view === 'voice' ? ' is-active' : ''}`}
               onClick={() => onNavigate('voice')}
             >
-              말하기 → 텍스트
+              말하기 → 가사
             </button>
             <button
               type="button"

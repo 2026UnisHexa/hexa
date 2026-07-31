@@ -5,10 +5,11 @@ type AuthResponse = {
   success: boolean
   message: string
   login_id: string
+  access_token?: string
 }
 
 type AuthPageProps = {
-  onAuthenticated: (loginId: string) => void
+  onAuthenticated: (session: { loginId: string; accessToken: string }) => void
   initialSignupOpen?: boolean
 }
 
@@ -93,8 +94,16 @@ export function AuthPage({ onAuthenticated, initialSignupOpen = false }: AuthPag
     }
     setLoading(true)
     try {
-      await requestAuth('login', loginId, password)
-      onAuthenticated(loginId.trim())
+      const data = await requestAuth('login', loginId, password)
+      const accessToken =
+        typeof data.access_token === 'string' ? data.access_token.trim() : ''
+      if (!accessToken) {
+        throw new Error('로그인 응답에 access_token이 없습니다. 백엔드 JWT 설정을 확인해 주세요.')
+      }
+      onAuthenticated({
+        loginId: data.login_id || loginId.trim(),
+        accessToken,
+      })
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : '서버에 연결할 수 없습니다.')
     } finally {
