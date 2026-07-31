@@ -1865,7 +1865,7 @@ img {
 
 .mypage__item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   padding: 14px 16px;
@@ -1874,9 +1874,41 @@ img {
   background: #fafcfe;
 }
 
+.mypage__item-main {
+  flex: 1;
+  min-width: 0;
+}
+
 .mypage__item h3 {
   margin: 8px 0 4px;
   font-size: 1rem;
+}
+
+.mypage__price-edit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.mypage__price-edit label {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.mypage__price-edit input {
+  width: 120px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  background: var(--color-surface);
+}
+
+.mypage__price-edit input:focus {
+  outline: 2px solid var(--color-primary-soft);
+  border-color: var(--color-primary);
 }
 
 .marketplace__title {

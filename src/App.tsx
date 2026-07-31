@@ -337,6 +337,11 @@ export default function App() {
             profile={profile}
             listings={listings}
             onProfileChange={setProfile}
+            onUpdateListingPrice={(id, price) =>
+              setListings((prev) =>
+                prev.map((l) => (l.id === id ? { ...l, price } : l)),
+              )
+            }
             onDeleteListing={(id) =>
               setListings((prev) => prev.filter((l) => l.id !== id))
             }
