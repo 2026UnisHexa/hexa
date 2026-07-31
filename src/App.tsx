@@ -38,6 +38,7 @@ import {
 import {
   buildAccompanimentNotes,
   melodyAccompanimentStart,
+  melodySpanSeconds,
 } from './lib/accompanimentNotes'
 import { getGenrePreset } from './lib/presets'
 import type { InstrumentId } from './lib/instruments'
@@ -450,6 +451,7 @@ export default function App() {
                           selectedSuggestion.chords,
                           genrePreset,
                           melodyAccompanimentStart(pitch.notes),
+                          melodySpanSeconds(pitch.notes),
                         )
                         const blob = compositionToMidiBlob(pitch.notes, acc)
                         downloadBlob(blob, 'hexa-composition.mid')
@@ -460,6 +462,7 @@ export default function App() {
                           selectedSuggestion.chords,
                           genrePreset,
                           melodyAccompanimentStart(pitch.notes),
+                          melodySpanSeconds(pitch.notes),
                         )
                         const xml = compositionToMusicXml(
                           [
