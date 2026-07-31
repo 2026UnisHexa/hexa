@@ -56,7 +56,7 @@ import { isOwnedBy } from './types/listing'
 import type { UserProfile } from './types/user'
 import { AUTH_LOGIN_KEY, USER_STORAGE_KEY } from './types/user'
 import { loadJson, saveJson } from './lib/storage'
-import { clearSession, fetchMe, getAccessToken } from './lib/auth'
+import { clearSession, getAccessToken, getStoredLoginId, readLoginIdFromToken } from './lib/auth'
 
 type View = 'home' | 'create' | 'marketplace' | 'mypage' | 'voice'
 
@@ -201,29 +201,21 @@ export default function App() {
     const token = getAccessToken()
     if (!token) return
 
-    let cancelled = false
-    void (async () => {
-      const loginId = await fetchMe()
-      if (cancelled) return
-      if (!loginId) {
-        clearSession()
-        return
-      }
-      setProfile((prev) =>
-        prev.loginId === loginId
-          ? prev
-          : {
-              loginId,
-              displayName: prev.displayName || loginId,
-              bio: prev.bio,
-              joinedAt: prev.joinedAt || new Date().toISOString(),
-            },
-      )
-    })()
+    // 현재 Render 백엔드에 GET /me 가 없음(404).
+    // 로그인 시 받은 JWT payload(sub/login_id)로 세션만 유지한다.
+    const loginId = readLoginIdFromToken(token) ?? getStoredLoginId()
+    if (!loginId) return
 
-    return () => {
-      cancelled = true
-    }
+    setProfile((prev) =>
+      prev.loginId === loginId
+        ? prev
+        : {
+            loginId,
+            displayName: prev.displayName || loginId,
+            bio: prev.bio,
+            joinedAt: prev.joinedAt || new Date().toISOString(),
+          },
+    )
   }, [setProfile])
 
   const tempoBpm = useMemo(

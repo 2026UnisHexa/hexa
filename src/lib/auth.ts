@@ -9,6 +9,12 @@ export type AuthSession = {
   accessToken: string
 }
 
+export type MeResult =
+  | { status: 'ok'; loginId: string }
+  | { status: 'unauthorized' }
+  | { status: 'unavailable' }
+  | { status: 'skipped' }
+
 export function getApiBaseUrl(): string {
   return (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '')
 }
@@ -57,23 +63,67 @@ export function clearSession(): void {
   }
 }
 
+/** Read login id from JWT payload without verifying signature (demo). */
+export function readLoginIdFromToken(token: string): string | null {
+  try {
+    const part = token.split('.')[1]
+    if (!part) return null
+    const json = atob(part.replace(/-/g, '+').replace(/_/g, '/'))
+    const payload = JSON.parse(json) as Record<string, unknown>
+    if (typeof payload.login_id === 'string' && payload.login_id.trim()) {
+      return payload.login_id.trim()
+    }
+    if (typeof payload.sub === 'string' && payload.sub.trim()) {
+      return payload.sub.trim()
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
 /**
- * Validate JWT with backend GET /me.
- * Returns login_id on success, null on failure.
+ * Validate JWT with backend GET /me when available.
+ * Render 배포본에는 /me 가 없을 수 있음 → unavailable (세션 유지).
  */
-export async function fetchMe(): Promise<string | null> {
+export async function fetchMe(): Promise<MeResult> {
   const base = getApiBaseUrl()
   const token = getAccessToken()
-  if (!base || !token) return null
+  if (!base || !token) return { status: 'skipped' }
 
   try {
     const res = await fetch(`${base}/me`, {
       headers: authHeaders(),
     })
-    if (!res.ok) return null
-    const data = (await res.json()) as { login_id?: unknown }
-    return typeof data.login_id === 'string' ? data.login_id : null
+
+    // Backend has no /me yet (current Render OpenAPI).
+    if (res.status === 404) {
+      return { status: 'unavailable' }
+    }
+
+    if (res.status === 401 || res.status === 403) {
+      return { status: 'unauthorized' }
+    }
+
+    if (!res.ok) {
+      return { status: 'unavailable' }
+    }
+
+    const data = (await res.json()) as {
+      login_id?: unknown
+      loginId?: unknown
+    }
+    if (typeof data.login_id === 'string' && data.login_id.trim()) {
+      return { status: 'ok', loginId: data.login_id.trim() }
+    }
+    if (typeof data.loginId === 'string' && data.loginId.trim()) {
+      return { status: 'ok', loginId: data.loginId.trim() }
+    }
+
+    const fromToken = readLoginIdFromToken(token)
+    if (fromToken) return { status: 'ok', loginId: fromToken }
+    return { status: 'unavailable' }
   } catch {
-    return null
+    return { status: 'unavailable' }
   }
 }
