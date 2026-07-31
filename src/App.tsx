@@ -16,6 +16,7 @@ import { ListForSaleButton } from './components/Marketplace/ListForSaleButton'
 import { PriceInputModal } from './components/Marketplace/PriceInputModal'
 import { ListingSuccessModal } from './components/Marketplace/ListingSuccessModal'
 import { MyPageView } from './components/MyPage/MyPageView'
+import { VoiceMemo } from './components/VoiceMemo/VoiceMemo'
 import { LoadingState } from './components/common/LoadingState'
 import { ErrorMessage } from './components/common/ErrorMessage'
 import { useRecorder } from './hooks/useRecorder'
@@ -55,7 +56,7 @@ import type { UserProfile } from './types/user'
 import { AUTH_LOGIN_KEY, USER_STORAGE_KEY } from './types/user'
 import { loadJson, saveJson } from './lib/storage'
 
-type View = 'home' | 'create' | 'marketplace' | 'mypage'
+type View = 'home' | 'create' | 'marketplace' | 'mypage' | 'voice'
 
 function defaultProfile(loginId: string): UserProfile {
   return {
@@ -325,7 +326,15 @@ export default function App() {
           <HomeView
             onOpenMarketplace={() => navigate('marketplace')}
             onCreate={() => navigate('create')}
+            onVoiceMemo={() => navigate('voice')}
           />
+        ) : null}
+
+        {view === 'voice' ? (
+          <div className="voice-memo-page">
+            <h1 className="voice-memo-page__title">말하기 → 텍스트</h1>
+            <VoiceMemo />
+          </div>
         ) : null}
 
         {view === 'marketplace' ? (

@@ -1,4 +1,4 @@
-type View = 'home' | 'create' | 'marketplace' | 'mypage'
+type View = 'home' | 'create' | 'marketplace' | 'mypage' | 'voice'
 
 type Props = {
   view: View
@@ -41,6 +41,13 @@ export function AppHeader({
                 새로 만들기
               </button>
             ) : null}
+            <button
+              type="button"
+              className={`app-header__link${view === 'voice' ? ' is-active' : ''}`}
+              onClick={() => onNavigate('voice')}
+            >
+              말하기 → 텍스트
+            </button>
             <button
               type="button"
               className={`app-header__link${view === 'mypage' ? ' is-active' : ''}`}

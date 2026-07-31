@@ -1,6 +1,7 @@
 type Props = {
   onOpenMarketplace: () => void
   onCreate: () => void
+  onVoiceMemo: () => void
 }
 
 function MarketplaceIcon() {
@@ -35,7 +36,29 @@ function CreateIcon() {
   )
 }
 
-export function HomeView({ onOpenMarketplace, onCreate }: Props) {
+function VoiceIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect
+        x="9"
+        y="3"
+        width="6"
+        height="11"
+        rx="3"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M6 11a6 6 0 0 0 12 0M12 17v3M9 20h6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+export function HomeView({ onOpenMarketplace, onCreate, onVoiceMemo }: Props) {
   return (
     <section className="home" data-node-id="6:57">
       <div className="home__cards">
@@ -50,6 +73,12 @@ export function HomeView({ onOpenMarketplace, onCreate }: Props) {
             <CreateIcon />
           </span>
           <span className="home-card__label">새로 만들기</span>
+        </button>
+        <button type="button" className="home-card" onClick={onVoiceMemo}>
+          <span className="home-card__icon">
+            <VoiceIcon />
+          </span>
+          <span className="home-card__label">말하기 → 텍스트</span>
         </button>
       </div>
     </section>
