@@ -47,14 +47,14 @@ export function parseChordSuggestions(raw: string): ChordSuggestion[] {
     }
     return valid.slice(0, 3)
   } catch (err) {
-    console.warn('[claude] JSON parse failed, using fallback', err)
+    console.warn('[suggest-chords] JSON parse failed, using fallback', err)
     return FALLBACK_CHORD_SUGGESTIONS
   }
 }
 
 /**
  * Ask the backend (/api/suggest-chords) for chord progressions.
- * Never calls Anthropic from the browser; API keys stay server-side.
+ * Never calls OpenAI from the browser; API keys stay server-side.
  * On any failure, returns hardcoded fallback progressions.
  */
 export async function suggestChordProgressions(
@@ -80,7 +80,7 @@ export async function suggestChordProgressions(
     }
     throw new Error('Unexpected API response shape')
   } catch (err) {
-    console.warn('[claude] request failed, using fallback', err)
+    console.warn('[suggest-chords] request failed, using fallback', err)
     return FALLBACK_CHORD_SUGGESTIONS
   }
 }

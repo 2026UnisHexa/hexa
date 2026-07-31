@@ -6,7 +6,7 @@ export function validateSuggestChordsBody(
   | { ok: true; melodySummary: string }
   | { ok: false; status: number; error: string }
 
-export function callClaudeForChords(
+export function callOpenAIForChords(
   melodySummary: string,
   apiKey: string,
 ): Promise<string>

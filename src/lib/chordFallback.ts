@@ -1,6 +1,6 @@
 import type { ChordSuggestion } from '../types/chord'
 
-/** Demo-safe hardcoded progressions when Claude JSON parse fails. */
+/** Demo-safe hardcoded progressions when OpenAI JSON parse fails. */
 export const FALLBACK_CHORD_SUGGESTIONS: ChordSuggestion[] = [
   {
     label: '안정적인 팝 진행 (fallback)',

@@ -5,7 +5,7 @@
 사용자가 브라우저에서 허밍을 녹음하면:
 
 1. Basic Pitch(오디오→MIDI 변환 모델)로 멜로디를 인식해서 악보로 렌더링
-2. 인식된 멜로디를 바탕으로 Claude API가 코드 진행을 제안
+2. 인식된 멜로디를 바탕으로 OpenAI API가 코드 진행을 제안
 3. 사용자가 선택한 장르 프리셋에 따라 반주를 붙여 결과물을 완성
 
 핵심 포지셔닝: **AI 작곡 보조 도구** (에이전트/작곡가라고 과장하지 않는다)
@@ -20,7 +20,7 @@
 | 오디오 녹음 | 브라우저 MediaRecorder API |
 | 피치/MIDI 인식 | `@spotify/basic-pitch` (TensorFlow.js, 클라이언트 사이드) |
 | 악보 렌더링 | VexFlow 또는 OpenSheetMusicDisplay (MusicXML 변환 후 표시) |
-| 코드 진행 제안 | Claude API (멜로디 요약 → **JSON 배열만** 응답), Tone.js로 카드별 미리듣기 |
+| 코드 진행 제안 | OpenAI API (멜로디 요약 → **JSON 배열만** 응답), Tone.js로 카드별 미리듣기 |
 | 코드 재생 | Tone.js `Sampler` + 피아노 샘플 (불가 시 `PolySynth` fallback) |
 | 자동 반주 (선택) | Magenta.js MusicVAE — 시간 남으면 추가, 필수 아님 |
 | 상태 저장 | DB 없이 `localStorage`만 사용 (세션 간 결과물 저장 필요 시) |
@@ -35,7 +35,7 @@
 - [ ] Basic Pitch로 MIDI 변환
 - [ ] MIDI → MusicXML 변환 후 오선보로 시각화
 - [ ] 인식된 멜로디 재생 (MIDI 사운드폰트로 미리듣기)
-- [ ] Claude API로 코드 진행 제안 3개 옵션 (**JSON 배열** 응답, 카드 UI + ▶ 재생)
+- [ ] OpenAI API로 코드 진행 제안 3개 옵션 (**JSON 배열** 응답, 카드 UI + ▶ 재생)
 - [ ] 장르 프리셋(발라드/재즈/팝 등) 선택 시 미리 정의된 반주 스타일 적용
 - [ ] 결과 MIDI/MusicXML 다운로드 기능
 - [ ] **(더미) 악보 판매 화면** — "마켓플레이스에 등록" 버튼 → 가격 입력 → "등록 완료" 모달만 표시. 실제 결제/서버 연동 없음. 20~30분 이내로 끝낼 것
@@ -75,7 +75,7 @@ hexa/
 │   │   │   └── ScoreView.tsx
 │   │   ├── Playback/            # 멜로디·반주 미리듣기
 │   │   │   └── PlaybackControls.tsx
-│   │   ├── ChordSuggestions/    # Claude 코드 진행 카드 (3옵션 + ▶ 재생)
+│   │   ├── ChordSuggestions/    # OpenAI 코드 진행 카드 (3옵션 + ▶ 재생)
 │   │   │   ├── ChordSuggestions.tsx
 │   │   │   └── ChordCard.tsx    # label, chords 표시 + ▶ 버튼
 │   │   ├── GenrePreset/         # 발라드/재즈/팝 등 장르 선택
@@ -100,7 +100,7 @@ hexa/
 │   ├── lib/
 │   │   ├── basicPitch.ts        # @spotify/basic-pitch 연동
 │   │   ├── midiToMusicXml.ts    # MIDI → MusicXML 변환
-│   │   ├── claude.ts            # Claude API + JSON 파싱 + fallback
+│   │   ├── claude.ts            # OpenAI API + JSON 파싱 + fallback
 │   │   ├── chordFallback.ts     # 하드코딩 fallback (예: C-Am-F-G)
 │   │   ├── chordPlayback.ts     # Tone.js Sampler/PolySynth로 코드 연주
 │   │   ├── accompaniment.ts     # 장르 프리셋 → 반주 매핑
@@ -116,11 +116,11 @@ hexa/
 │   │   └── genre.ts             # GenrePreset
 │   │
 │   └── utils/
-│       └── melodySummary.ts     # MIDI → Claude 프롬프트용 텍스트 요약
+│       └── melodySummary.ts     # MIDI → OpenAI 프롬프트용 텍스트 요약
 │
 ├── api/
-│   └── suggest-chords.js        # Vercel 서버리스 — Claude 호출 (키는 서버만)
-├── .env.example                 # ANTHROPIC_API_KEY (VITE_ 접두사 금지)
+│   └── suggest-chords.js        # Vercel 서버리스 — OpenAI 호출 (키는 서버만)
+├── .env.example                 # OPENAI_API_KEY (VITE_ 접두사 금지)
 ├── index.html
 ├── package.json
 ├── vite.config.ts
@@ -136,7 +136,7 @@ hexa/
 | `ScoreView` | MusicXML 기반 오선보 표시 (VexFlow / OSMD) |
 | `PlaybackControls` | 멜로디(+반주) MIDI 미리듣기 |
 | `ChordSuggestions` / `ChordCard` | JSON 제안 3개를 카드로 표시·선택, 각 카드에 ▶ 재생 |
-| `api/suggest-chords` | 서버에서만 Claude 호출 (`ANTHROPIC_API_KEY`). 프론트는 `/api/suggest-chords`만 fetch |
+| `api/suggest-chords` | 서버에서만 OpenAI 호출 (`OPENAI_API_KEY`). 프론트는 `/api/suggest-chords`만 fetch |
 | `claude` + `chordFallback` | 서버 응답 JSON 파싱, 실패 시 C-Am-F-G 등 fallback (키 없음) |
 | `chordPlayback` / `useChordPlayback` | Tone.js Sampler(피아노) 우선, 불가 시 PolySynth로 코드 진행 순차 재생 |
 | `GenrePreset` | 발라드/재즈/팝 등 반주 스타일 선택 |
@@ -149,7 +149,7 @@ hexa/
 
 ```
 녹음 → Basic Pitch(MIDI) → 악보 렌더 + 미리듣기
-                         → Claude 코드 제안 3개 선택
+                         → OpenAI 코드 제안 3개 선택
                          → 장르 프리셋 반주 적용
                          → 합주 재생 / MIDI·MusicXML 다운로드
                          → (더미) 마켓플레이스 등록
@@ -157,7 +157,7 @@ hexa/
 
 ---
 
-## 코드 진행 제안 (Claude API)
+## 코드 진행 제안 (OpenAI API)
 
 ### 응답 형식
 
@@ -209,7 +209,7 @@ hexa/
 | 1h | 프로젝트 셋업 | Vite + React, 기본 레이아웃, Vercel/Netlify 배포 URL 확보 |
 | 3h | 녹음 → Basic Pitch | MediaRecorder → 모델 추론 → MIDI 노트 콘솔 확인 (조용/시끄러운 환경 테스트) |
 | 3h | 악보 렌더링 | MIDI → MusicXML → VexFlow/OSMD, Tone.js 미리듣기 |
-| 2h | Claude API | JSON 전용 프롬프트 → 파싱/fallback → 카드 UI + ▶ (Sampler/PolySynth) |
+| 2h | OpenAI API | JSON 전용 프롬프트 → 파싱/fallback → 카드 UI + ▶ (Sampler/PolySynth) |
 | 2h | 장르 프리셋 반주 | 3~4개 패턴을 선택 코드에 매핑, 멜로디+반주 동시 재생 |
 | 2h | UI/UX | 로딩·에러 안내, MIDI/MusicXML 다운로드, **더미 판매 화면 (20~30분, 오버되면 스킵)** |
 | 2h | 버퍼 + 데모 | 실환경 리허설; 여유 시 Magenta.js, 아니면 스킵 |
@@ -222,8 +222,8 @@ hexa/
 |--------|------|
 | 시끄러운 데모 현장에서 인식 정확도 하락 | 마이크 가까이 녹음 안내 UI, 가능하면 조용한 자리에서 데모 |
 | Basic Pitch가 화음/노이즈에 오작동 | **단음 허밍만 지원**한다고 명확히 안내 |
-| Claude 응답이 JSON이 아니거나 파싱 실패 | try-catch + 하드코딩 fallback (C–Am–F–G). 데모 화면 중단 금지 |
-| Claude 코드 진행이 음악적으로 이상함 | 프롬프트에 다이아토닉 코드 등 음악 이론 제약 명시 |
+| OpenAI 응답이 JSON이 아니거나 파싱 실패 | try-catch + 하드코딩 fallback (C–Am–F–G). 데모 화면 중단 금지 |
+| OpenAI 코드 진행이 음악적으로 이상함 | 프롬프트에 다이아토닉 코드 등 음악 이론 제약 명시 |
 | `/api/suggest-chords`에 rate limit 없음 (MVP) | 남용·비용 폭주 가능. 데모 후 Vercel KV/Upstash 등으로 제한 추가 예정. 지금은 구현하지 않음 |
 | 시간 부족 | Magenta.js 자동 반주 → 장르 프리셋 다양화 → UI 폴리싱 순으로 쳐냄. **핵심(녹음→악보→코드 제안)은 반드시 완성** |
 
@@ -233,7 +233,7 @@ hexa/
 
 1. "허밍만 하면 AI가 악보로 만들어줍니다" → 마이크에 짧게 허밍
 2. 실시간으로 오선보 렌더링되는 화면 보여주기
-3. "이 멜로디에 Claude가 코드 진행을 제안해줍니다" → 3개 옵션 + ▶로 미리듣기
+3. "이 멜로디에 OpenAI가 코드 진행을 제안해줍니다" → 3개 옵션 + ▶로 미리듣기
 4. 장르 선택 후 반주 붙은 결과 재생
 5. "완성된 악보는 마켓플레이스에 등록해서 판매할 수도 있습니다" → 더미 등록 화면을 보여주며 **"지금은 컨셉 데모이고, 실제로는 Stripe 연동과 창작 검증 단계가 필요합니다"**라고 명확히 언급
 6. 다운로드 버튼으로 마무리
@@ -244,9 +244,9 @@ hexa/
 
 ```bash
 npm install
-cp .env.example .env.local   # ANTHROPIC_API_KEY만 설정 (VITE_ 접두사 금지)
+cp .env.example .env.local   # OPENAI_API_KEY만 설정 (VITE_ 접두사 금지)
 npm run dev
 ```
 
-Vercel 배포 시 Project Settings → Environment Variables에 `ANTHROPIC_API_KEY`를 등록한다.  
+Vercel 배포 시 Project Settings → Environment Variables에 `OPENAI_API_KEY`를 등록한다.  
 코드 진행 제안은 `api/suggest-chords` 서버리스 함수를 통하며, 브라우저에는 API 키가 내려가지 않는다. (서버 DB 없음)

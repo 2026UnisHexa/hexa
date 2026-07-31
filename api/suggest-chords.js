@@ -1,14 +1,21 @@
 /**
- * Vercel serverless: Claude chord suggestions.
- * API key is read only from process.env.ANTHROPIC_API_KEY (never exposed to the client).
+ * Vercel serverless: OpenAI chord suggestions.
+ * API key is read only from process.env.OPENAI_API_KEY (never exposed to the client).
  */
+
+import OpenAI from 'openai'
 
 const MAX_MELODY_SUMMARY_LENGTH = 2000
 
+// 필요시 모델명 변경 가능
+const OPENAI_MODEL = 'gpt-4o-mini'
+
 const SYSTEM_PROMPT = `You are a music theory assistant. Given a melody summary, suggest exactly 3 chord progressions that fit it.
-Prefer diatonic chords. Respond with JSON array ONLY — no markdown, no explanation, no other text.
-Each item must be: {"label": string, "chords": [{"name": string, "notes": string[]}]}
-Example: [{"label":"안정적인 팝 진행","chords":[{"name":"C","notes":["C4","E4","G4"]},{"name":"Am","notes":["A3","C4","E4"]},{"name":"F","notes":["F3","A3","C4"]},{"name":"G","notes":["G3","B3","D4"]}]}]`
+Prefer diatonic chords.
+반드시 JSON만 출력, 다른 설명 텍스트 없이.
+Return a JSON object with this exact shape:
+{"suggestions":[{"label":string,"chords":[{"name":string,"notes":string[]}]}]}
+Example: {"suggestions":[{"label":"안정적인 팝 진행","chords":[{"name":"C","notes":["C4","E4","G4"]},{"name":"Am","notes":["A3","C4","E4"]},{"name":"F","notes":["F3","A3","C4"]},{"name":"G","notes":["G3","B3","D4"]}]}]}`
 
 /**
  * @param {unknown} body
@@ -52,50 +59,48 @@ export function validateSuggestChordsBody(body) {
 /**
  * @param {string} melodySummary
  * @param {string} apiKey
- * @returns {Promise<string>} raw Claude text (expected JSON array)
+ * @returns {Promise<string>} raw JSON text (array of suggestions) for the frontend parser
  */
-export async function callClaudeForChords(melodySummary, apiKey) {
-  const userPrompt = `Melody summary:\n${melodySummary}\n\n반드시 JSON만 출력, 다른 설명 텍스트 없이.`
+export async function callOpenAIForChords(melodySummary, apiKey) {
+  const userPrompt = `Melody summary:\n${melodySummary}\n\n반드시 JSON만 출력, 다른 설명 텍스트 없이. Return {"suggestions":[...]} with exactly 3 items.`
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userPrompt }],
-    }),
+  const client = new OpenAI({ apiKey })
+
+  const completion = await client.chat.completions.create({
+    model: OPENAI_MODEL,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt },
+    ],
   })
 
-  const payload = await response.json().catch(() => null)
-
-  if (!response.ok) {
-    const detail =
-      payload && typeof payload === 'object' && 'error' in payload
-        ? JSON.stringify(payload.error)
-        : `HTTP ${response.status}`
-    throw new Error(`Claude API error: ${detail}`)
-  }
-
-  const text =
-    payload &&
-    typeof payload === 'object' &&
-    Array.isArray(payload.content) &&
-    payload.content[0] &&
-    payload.content[0].type === 'text'
-      ? payload.content[0].text
-      : null
-
+  const text = completion.choices[0]?.message?.content
   if (typeof text !== 'string' || !text.trim()) {
-    throw new Error('Claude API returned empty content')
+    throw new Error('OpenAI API returned empty content')
   }
 
-  return text
+  // json_object forces a root object; normalize to a JSON array string for the client.
+  let parsed
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    throw new Error('OpenAI API returned invalid JSON')
+  }
+
+  if (Array.isArray(parsed)) {
+    return JSON.stringify(parsed)
+  }
+
+  if (
+    parsed &&
+    typeof parsed === 'object' &&
+    Array.isArray(parsed.suggestions)
+  ) {
+    return JSON.stringify(parsed.suggestions)
+  }
+
+  throw new Error('OpenAI JSON missing suggestions array')
 }
 
 /**
@@ -139,19 +144,18 @@ export async function handleSuggestChords(req, res) {
       return
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY
+    const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey || typeof apiKey !== 'string' || !apiKey.trim()) {
       res.statusCode = 500
       res.end(
         JSON.stringify({
-          error:
-            'Server misconfiguration: ANTHROPIC_API_KEY is not set',
+          error: 'Server misconfiguration: OPENAI_API_KEY is not set',
         }),
       )
       return
     }
 
-    const raw = await callClaudeForChords(validated.melodySummary, apiKey.trim())
+    const raw = await callOpenAIForChords(validated.melodySummary, apiKey.trim())
     res.statusCode = 200
     res.end(JSON.stringify({ raw }))
   } catch (err) {
