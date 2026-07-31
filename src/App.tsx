@@ -57,6 +57,7 @@ import type { UserProfile } from './types/user'
 import { AUTH_LOGIN_KEY, USER_STORAGE_KEY } from './types/user'
 import { loadJson, saveJson } from './lib/storage'
 import { clearSession, getAccessToken, getStoredLoginId, readLoginIdFromToken } from './lib/auth'
+import { renderCompositionAudio } from './lib/renderComposition'
 import {
   deleteRemoteAudio,
   isRemoteListingId,
@@ -307,6 +308,15 @@ export default function App() {
     setListingError(null)
 
     try {
+      if (!selectedSuggestion) {
+        throw new Error('코드 진행을 먼저 선택해 주세요.')
+      }
+      const renderedAudio = await renderCompositionAudio(
+        pitch.notes,
+        selectedSuggestion.chords,
+        genrePreset,
+        selectedInstrument,
+      )
       const created = await uploadAudio({
         title: trimmed,
         price: parsedPrice,
@@ -314,7 +324,8 @@ export default function App() {
         chordLabel: selectedSuggestion?.label ?? null,
         tempoBpm,
         noteCount: pitch.notes.length,
-        audioBlob: recorder.audioBlob,
+        audioBlob: renderedAudio,
+        fileName: `hexa-${selectedInstrument}.wav`,
       })
 
       setListings((prev) => [
