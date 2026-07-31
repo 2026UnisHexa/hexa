@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { MarketplaceListing } from '../../types/listing'
 import type { UserProfile } from '../../types/user'
 
@@ -5,6 +6,7 @@ type Props = {
   profile: UserProfile
   listings: MarketplaceListing[]
   onProfileChange: (next: UserProfile) => void
+  onUpdateListingPrice: (id: string, price: number) => void
   onDeleteListing: (id: string) => void
   onCreate: () => void
   onOpenMarketplace: () => void
@@ -33,10 +35,63 @@ function initials(name: string): string {
   return t.slice(0, 2).toUpperCase()
 }
 
+function ListingPriceEditor({
+  listingId,
+  price,
+  onSave,
+}: {
+  listingId: string
+  price: number
+  onSave: (price: number) => void
+}) {
+  const [value, setValue] = useState(String(price))
+
+  useEffect(() => {
+    setValue(String(price))
+  }, [price])
+
+  const parsed = Number(value)
+  const nextPrice = Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : null
+  const canSave = nextPrice !== null && nextPrice !== price
+
+  return (
+    <div className="mypage__price-edit">
+      <label htmlFor={`mypage-price-${listingId}`}>가격</label>
+      <input
+        id={`mypage-price-${listingId}`}
+        type="number"
+        min={0}
+        step={100}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && canSave && nextPrice !== null) {
+            e.preventDefault()
+            onSave(nextPrice)
+          }
+        }}
+      />
+      <span className="muted">원</span>
+      <button
+        type="button"
+        className="btn btn--secondary"
+        disabled={!canSave}
+        onClick={() => {
+          if (nextPrice === null) return
+          onSave(nextPrice)
+        }}
+      >
+        저장
+      </button>
+    </div>
+  )
+}
+
 export function MyPageView({
   profile,
   listings,
   onProfileChange,
+  onUpdateListingPrice,
   onDeleteListing,
   onCreate,
   onOpenMarketplace,
@@ -137,14 +192,18 @@ export function MyPageView({
             <ul className="mypage__list">
               {mine.map((item) => (
                 <li key={item.id} className="mypage__item">
-                  <div>
+                  <div className="mypage__item-main">
                     <span className="market-card__badge">{item.genreLabel}</span>
                     <h3>{item.title}</h3>
                     <p className="market-card__meta">
-                      {formatPrice(item.price)}
-                      {item.chordLabel ? ` · ${item.chordLabel}` : ''}
-                      {` · ${formatDate(item.createdAt)}`}
+                      {item.chordLabel ? `${item.chordLabel} · ` : ''}
+                      {formatDate(item.createdAt)}
                     </p>
+                    <ListingPriceEditor
+                      listingId={item.id}
+                      price={item.price}
+                      onSave={(price) => onUpdateListingPrice(item.id, price)}
+                    />
                   </div>
                   <button
                     type="button"
