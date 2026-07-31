@@ -3,11 +3,11 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { AuthPage } from './components/Page/AuthPage.tsx'
-import { getAccessToken, persistSession } from './lib/auth'
+import { persistSession } from './lib/auth'
 
 let path = window.location.pathname.replace(/\/$/, '') || '/'
 
-if (path === '/' && !getAccessToken()) {
+if (path === '/') {
   window.history.replaceState(null, '', '/login')
   path = '/login'
 }
@@ -21,7 +21,7 @@ createRoot(document.getElementById('root')!).render(
         initialSignupOpen={path === '/signup'}
         onAuthenticated={(session) => {
           persistSession(session)
-          window.location.assign('/')
+          window.location.assign('/home')
         }}
       />
     ) : (
