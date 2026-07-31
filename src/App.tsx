@@ -1,4 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { AppHeader } from './components/layout/AppHeader'
+import {
+  CREATE_STEPS,
+  StepSidebar,
+} from './components/layout/StepSidebar'
+import { HomeView } from './components/Home/HomeView'
+import { MarketplaceView } from './components/Marketplace/MarketplaceView'
 import { Recorder } from './components/Recorder/Recorder'
 import { ScoreView } from './components/ScoreView/ScoreView'
 import { PlaybackControls } from './components/Playback/PlaybackControls'
@@ -30,7 +37,13 @@ import {
 import type { ChordSuggestion } from './types/chord'
 import type { GenreId } from './types/genre'
 
+type View = 'home' | 'create' | 'marketplace'
+
 export default function App() {
+  const [view, setView] = useState<View>('home')
+  const [step, setStep] = useState(1)
+  const [maxReached, setMaxReached] = useState(1)
+
   const recorder = useRecorder()
   const pitch = useBasicPitch()
   const [selectedInstrument, setSelectedInstrument] =
@@ -68,6 +81,21 @@ export default function App() {
   const hasMelody = pitch.notes.length > 0
   const isPlayingMelody = playback.mode === 'melody'
   const isPlayingChords = chordPlayback.playing
+  const currentStepMeta =
+    CREATE_STEPS.find((s) => s.id === step) ?? CREATE_STEPS[0]
+
+  function goToStep(next: number) {
+    setStep(next)
+    setMaxReached((prev) => Math.max(prev, next))
+  }
+
+  function navigate(next: View) {
+    setView(next)
+    if (next === 'create') {
+      setStep((s) => s)
+      setMaxReached((m) => Math.max(m, 1))
+    }
+  }
 
   useEffect(() => {
     if (!isPlayingChords) {
@@ -93,6 +121,8 @@ export default function App() {
       const notes = await pitch.transcribe(blob)
       if (cancelled || notes.length === 0) return
 
+      goToStep(2)
+
       setSuggestLoading(true)
       try {
         const bpm = estimateTempoBpm(notes)
@@ -103,6 +133,7 @@ export default function App() {
         if (!cancelled) {
           setSuggestions(result)
           setSelectedIndex(0)
+          setMaxReached((prev) => Math.max(prev, 3))
           console.log('[App] chord suggestions', result)
         }
       } catch (err) {
@@ -124,130 +155,212 @@ export default function App() {
   }, [recorder.status, recorder.audioBlob, pitch.transcribe, stopChords])
 
   return (
-    <main>
-      <header>
-        <h1>Hexa</h1>
-        <p>허밍 → 악보 변환 + AI 작곡 보조 (기능 테스트용, 스타일 없음)</p>
-      </header>
+    <div className="app-shell">
+      <AppHeader view={view} onNavigate={navigate} />
 
-      <Recorder
-        status={recorder.status}
-        error={recorder.error}
-        onStart={() => {
-          processedBlobRef.current = null
-          void recorder.start()
-        }}
-        onStop={recorder.stop}
-      />
+      <div className="app-body">
+        {view === 'home' ? (
+          <HomeView
+            onOpenMarketplace={() => navigate('marketplace')}
+            onCreate={() => navigate('create')}
+          />
+        ) : null}
 
-      {pitch.loading ? (
-        <LoadingState
-          message={`Basic Pitch 인식 중… ${pitch.progress}% (콘솔에서 MIDI 노트 확인)`}
-        />
-      ) : null}
-      {pitch.error ? <ErrorMessage message={pitch.error} /> : null}
-      {pipelineError ? <ErrorMessage message={pipelineError} /> : null}
-      {instrument.error ? (
-        <ErrorMessage message={`악기 로드 실패: ${instrument.error}`} />
-      ) : null}
+        {view === 'marketplace' ? (
+          <MarketplaceView onCreate={() => navigate('create')} />
+        ) : null}
 
-      {hasMelody ? (
-        <p>
-          인식된 노트 {pitch.notes.length}개 · 추정 템포 {tempoBpm} BPM · 요약:{' '}
-          {summarizeMelody(pitch.notes, tempoBpm)}
-        </p>
-      ) : null}
+        {view === 'create' ? (
+          <div className="create-layout">
+            <StepSidebar
+              currentStep={step}
+              maxReached={maxReached}
+              onSelect={goToStep}
+            />
 
-      <ScoreView
-        musicXml={musicXml}
-        hasMelody={hasMelody}
-        isPlayingMelody={isPlayingMelody}
-        instrumentLoading={instrument.isLoading}
-        selectedInstrument={selectedInstrument}
-        onInstrumentChange={(id) => {
-          if (isPlayingMelody) playback.stop()
-          setSelectedInstrument(id)
-        }}
-        onToggleMelody={() => {
-          if (instrument.isLoading) return
-          playback.toggleMelody(pitch.notes)
-        }}
-      />
+            <div className="create-main">
+              <h1 className="create-main__title">{currentStepMeta.title}</h1>
 
-      <ChordSuggestions
-        suggestions={suggestions}
-        selectedIndex={selectedIndex}
-        loading={suggestLoading}
-        playingIndex={isPlayingChords ? playingChordIndex : null}
-        onSelect={(i) => {
-          if (isPlayingChords) chordPlayback.stop()
-          setPlayingChordIndex(null)
-          setSelectedIndex(i)
-        }}
-        onTogglePlay={(i) => {
-          if (isPlayingChords && playingChordIndex === i) {
-            chordPlayback.stop()
-            setPlayingChordIndex(null)
-            return
-          }
-          const s = suggestions[i]
-          if (!s) return
-          setSelectedIndex(i)
-          setPlayingChordIndex(i)
-          void chordPlayback.play(s.chords, genrePreset.chordDurationSeconds)
-        }}
-      />
+              {pitch.loading ? (
+                <LoadingState
+                  message={`Basic Pitch 인식 중… ${pitch.progress}%`}
+                />
+              ) : null}
+              {pitch.error ? <ErrorMessage message={pitch.error} /> : null}
+              {pipelineError ? <ErrorMessage message={pipelineError} /> : null}
+              {instrument.error ? (
+                <ErrorMessage message={`악기 로드 실패: ${instrument.error}`} />
+              ) : null}
 
-      <GenrePreset value={genreId} onChange={setGenreId} />
+              {step === 1 ? (
+                <Recorder
+                  status={recorder.status}
+                  error={recorder.error}
+                  onStart={() => {
+                    processedBlobRef.current = null
+                    void recorder.start()
+                  }}
+                  onStop={recorder.stop}
+                />
+              ) : null}
 
-      <PlaybackControls
-        melodyDisabled={!hasMelody || instrument.isLoading}
-        accompanimentDisabled={
-          !hasMelody || !selectedSuggestion || instrument.isLoading
-        }
-        mode={playback.mode}
-        onToggleMelody={() => {
-          if (instrument.isLoading) return
-          playback.toggleMelody(pitch.notes)
-        }}
-        onToggleWithAccompaniment={() => {
-          if (!selectedSuggestion) {
-            if (playback.mode === 'accompaniment') playback.stop()
-            return
-          }
-          if (instrument.isLoading) return
-          playback.toggleWithAccompaniment(
-            pitch.notes,
-            selectedSuggestion.chords,
-            genrePreset,
-          )
-        }}
-      />
+              {step === 2 ? (
+                <>
+                  {hasMelody ? (
+                    <p className="muted">
+                      인식된 노트 {pitch.notes.length}개 · 추정 템포 {tempoBpm}{' '}
+                      BPM
+                    </p>
+                  ) : null}
+                  <ScoreView
+                    musicXml={musicXml}
+                    hasMelody={hasMelody}
+                    isPlayingMelody={isPlayingMelody}
+                    instrumentLoading={instrument.isLoading}
+                    selectedInstrument={selectedInstrument}
+                    onInstrumentChange={(id) => {
+                      if (isPlayingMelody) playback.stop()
+                      setSelectedInstrument(id)
+                    }}
+                    onToggleMelody={() => {
+                      if (instrument.isLoading) return
+                      playback.toggleMelody(pitch.notes)
+                    }}
+                  />
+                </>
+              ) : null}
 
-      <DownloadButtons
-        disabled={!hasMelody || !musicXml}
-        onDownloadMidi={() => {
-          const blob = melodyNotesToMidiBlob(pitch.notes)
-          downloadBlob(blob, 'hexa-melody.mid')
-        }}
-        onDownloadMusicXml={() => {
-          if (!musicXml) return
-          downloadBlob(
-            new Blob([musicXml], {
-              type: 'application/vnd.recordare.musicxml+xml',
-            }),
-            'hexa-melody.musicxml',
-          )
-        }}
-      />
+              {step === 3 ? (
+                <ChordSuggestions
+                  suggestions={suggestions}
+                  selectedIndex={selectedIndex}
+                  loading={suggestLoading}
+                  playingIndex={isPlayingChords ? playingChordIndex : null}
+                  onSelect={(i) => {
+                    if (isPlayingChords) chordPlayback.stop()
+                    setPlayingChordIndex(null)
+                    setSelectedIndex(i)
+                  }}
+                  onTogglePlay={(i) => {
+                    if (isPlayingChords && playingChordIndex === i) {
+                      chordPlayback.stop()
+                      setPlayingChordIndex(null)
+                      return
+                    }
+                    const s = suggestions[i]
+                    if (!s) return
+                    setSelectedIndex(i)
+                    setPlayingChordIndex(i)
+                    void chordPlayback.play(
+                      s.chords,
+                      genrePreset.chordDurationSeconds,
+                    )
+                  }}
+                />
+              ) : null}
 
-      <section>
-        <h2>6. 마켓플레이스 (더미)</h2>
-        <ListForSaleButton
-          disabled={!hasMelody}
-          onClick={() => setPriceOpen(true)}
-        />
-      </section>
+              {step === 4 ? (
+                <>
+                  <GenrePreset value={genreId} onChange={setGenreId} />
+                  <div style={{ height: 16 }} />
+                  <PlaybackControls
+                    melodyDisabled={!hasMelody || instrument.isLoading}
+                    accompanimentDisabled={
+                      !hasMelody || !selectedSuggestion || instrument.isLoading
+                    }
+                    mode={playback.mode}
+                    onToggleMelody={() => {
+                      if (instrument.isLoading) return
+                      playback.toggleMelody(pitch.notes)
+                    }}
+                    onToggleWithAccompaniment={() => {
+                      if (!selectedSuggestion) {
+                        if (playback.mode === 'accompaniment') playback.stop()
+                        return
+                      }
+                      if (instrument.isLoading) return
+                      playback.toggleWithAccompaniment(
+                        pitch.notes,
+                        selectedSuggestion.chords,
+                        genrePreset,
+                      )
+                    }}
+                  />
+                </>
+              ) : null}
+
+              {step === 5 ? (
+                <>
+                  <PlaybackControls
+                    melodyDisabled={!hasMelody || instrument.isLoading}
+                    accompanimentDisabled={
+                      !hasMelody || !selectedSuggestion || instrument.isLoading
+                    }
+                    mode={playback.mode}
+                    onToggleMelody={() => {
+                      if (instrument.isLoading) return
+                      playback.toggleMelody(pitch.notes)
+                    }}
+                    onToggleWithAccompaniment={() => {
+                      if (!selectedSuggestion) {
+                        if (playback.mode === 'accompaniment') playback.stop()
+                        return
+                      }
+                      if (instrument.isLoading) return
+                      playback.toggleWithAccompaniment(
+                        pitch.notes,
+                        selectedSuggestion.chords,
+                        genrePreset,
+                      )
+                    }}
+                  />
+                  <div className="download-actions">
+                    <DownloadButtons
+                      disabled={!hasMelody || !musicXml}
+                      onDownloadMidi={() => {
+                        const blob = melodyNotesToMidiBlob(pitch.notes)
+                        downloadBlob(blob, 'hexa-melody.mid')
+                      }}
+                      onDownloadMusicXml={() => {
+                        if (!musicXml) return
+                        downloadBlob(
+                          new Blob([musicXml], {
+                            type: 'application/vnd.recordare.musicxml+xml',
+                          }),
+                          'hexa-melody.musicxml',
+                        )
+                      }}
+                    />
+                    <ListForSaleButton
+                      disabled={!hasMelody}
+                      onClick={() => setPriceOpen(true)}
+                    />
+                  </div>
+                </>
+              ) : null}
+
+              <div className="create-main__footer">
+                <button
+                  type="button"
+                  className="btn btn--ghost"
+                  disabled={step <= 1}
+                  onClick={() => goToStep(step - 1)}
+                >
+                  이전
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--primary"
+                  disabled={step >= 5 || (step === 1 && !hasMelody)}
+                  onClick={() => goToStep(Math.min(5, step + 1))}
+                >
+                  다음
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
 
       <PriceInputModal
         open={priceOpen}
@@ -264,6 +377,6 @@ export default function App() {
         price={price}
         onClose={() => setSuccessOpen(false)}
       />
-    </main>
+    </div>
   )
 }

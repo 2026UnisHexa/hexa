@@ -7,22 +7,71 @@ type Props = {
   onStop: () => void
 }
 
-export function Recorder({ status, error, onStart, onStop }: Props) {
+function MicIcon() {
   return (
-    <section>
-      <h2>1. 허밍 녹음</h2>
-      <p>
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect
+        x="9"
+        y="3"
+        width="6"
+        height="11"
+        rx="3"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M6 11a6 6 0 0 0 12 0M12 17v3M9 20h6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+export function Recorder({ status, error, onStart, onStop }: Props) {
+  const recording = status === 'recording'
+
+  return (
+    <div className="panel">
+      <p className="muted">
         단음으로, 마이크에 가까이 대고 녹음해 주세요. (화음/노이즈는 인식이
         떨어질 수 있습니다)
       </p>
-      <RecorderStatus status={status} />
-      {error ? <p role="alert">{error}</p> : null}
-      <button type="button" onClick={onStart} disabled={status === 'recording'}>
-        녹음 시작
-      </button>{' '}
-      <button type="button" onClick={onStop} disabled={status !== 'recording'}>
-        녹음 정지
-      </button>
-    </section>
+      <div className="record-stage">
+        <div
+          className={`record-stage__mic${recording ? ' is-recording' : ''}`}
+          aria-hidden="true"
+        >
+          <MicIcon />
+        </div>
+        <span className="status-pill">
+          <RecorderStatus status={status} />
+        </span>
+        {error ? (
+          <p className="alert" role="alert">
+            {error}
+          </p>
+        ) : null}
+        <div className="btn-row">
+          <button
+            type="button"
+            className="btn btn--primary btn--lg"
+            onClick={onStart}
+            disabled={recording}
+          >
+            녹음 시작
+          </button>
+          <button
+            type="button"
+            className="btn btn--secondary btn--lg"
+            onClick={onStop}
+            disabled={!recording}
+          >
+            녹음 정지
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }

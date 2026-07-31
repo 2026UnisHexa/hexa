@@ -25,7 +25,7 @@ export function PriceInputModal({
   }, [open])
 
   return (
-    <dialog ref={ref} onClose={onCancel}>
+    <dialog ref={ref} className="modal" onClose={onCancel}>
       <form
         method="dialog"
         onSubmit={(e) => {
@@ -33,26 +33,29 @@ export function PriceInputModal({
           onSubmit()
         }}
       >
-        <h3>마켓플레이스 등록 (컨셉 데모)</h3>
-        <p>
+        <h2>마켓플레이스 등록</h2>
+        <p className="muted">
           실제 결제/서버 연동은 없습니다. 데모용 UI입니다.
         </p>
-        <label>
-          가격 (원){' '}
+        <div className="field">
+          <label htmlFor="listing-price">가격 (원)</label>
           <input
+            id="listing-price"
             type="number"
             min="0"
             value={price}
             onChange={(e) => onPriceChange(e.target.value)}
             required
           />
-        </label>
-        <p>
-          <button type="submit">등록</button>{' '}
-          <button type="button" onClick={onCancel}>
+        </div>
+        <div className="modal__actions">
+          <button type="button" className="btn btn--ghost" onClick={onCancel}>
             취소
           </button>
-        </p>
+          <button type="submit" className="btn btn--primary">
+            등록
+          </button>
+        </div>
       </form>
     </dialog>
   )

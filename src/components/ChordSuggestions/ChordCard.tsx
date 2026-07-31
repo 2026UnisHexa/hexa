@@ -19,28 +19,33 @@ export function ChordCard({
 
   return (
     <li>
-      <label>
-        <input
-          type="radio"
-          name="chord-suggestion"
-          checked={selected}
-          onChange={onSelect}
-        />{' '}
-        <strong>{suggestion.label}</strong>
-      </label>
-      <div>
-        {chordNames}{' '}
-        <button type="button" onClick={onTogglePlay}>
-          {isPlaying ? '⏹' : '▶'}
+      <div
+        className={`chord-card${selected ? ' is-selected' : ''}`}
+        role="button"
+        tabIndex={0}
+        onClick={onSelect}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onSelect()
+          }
+        }}
+      >
+        <div>
+          <div className="chord-card__label">{suggestion.label}</div>
+          <div className="chord-card__chords">{chordNames}</div>
+        </div>
+        <button
+          type="button"
+          className="btn btn--secondary"
+          onClick={(e) => {
+            e.stopPropagation()
+            onTogglePlay()
+          }}
+        >
+          {isPlaying ? '정지' : '미리듣기'}
         </button>
       </div>
-      <ul>
-        {suggestion.chords.map((c) => (
-          <li key={`${suggestion.label}-${c.name}-${c.notes.join('.')}`}>
-            {c.name}: {c.notes.join(', ')}
-          </li>
-        ))}
-      </ul>
     </li>
   )
 }

@@ -3,5 +3,5 @@ type Props = {
 }
 
 export function LoadingState({ message }: Props) {
-  return <p>{message}</p>
+  return <p className="status-pill">{message}</p>
 }

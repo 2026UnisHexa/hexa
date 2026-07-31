@@ -65,25 +65,26 @@ export function ScoreView({
   }, [musicXml])
 
   return (
-    <section>
-      <h2>2. 악보</h2>
+    <div className="panel">
       {onToggleMelody ? (
-        <p>
+        <div className="btn-row" style={{ marginBottom: 16 }}>
           <button
             type="button"
+            className="btn btn--primary"
             onClick={onToggleMelody}
             disabled={!hasMelody || instrumentLoading}
           >
             {instrumentLoading
               ? '악기 로딩 중…'
               : isPlayingMelody
-                ? '⏹ 정지'
-                : '▶ 인식된 멜로디 듣기'}
-          </button>{' '}
+                ? '정지'
+                : '인식된 멜로디 듣기'}
+          </button>
           {onInstrumentChange ? (
-            <label>
-              악기{' '}
+            <div className="field" style={{ marginBottom: 0, minWidth: 160 }}>
+              <label htmlFor="instrument-select">악기</label>
               <select
+                id="instrument-select"
                 value={selectedInstrument}
                 onChange={(e) =>
                   onInstrumentChange(e.target.value as InstrumentId)
@@ -95,13 +96,14 @@ export function ScoreView({
                   </option>
                 ))}
               </select>
-            </label>
+            </div>
           ) : null}
-          {instrumentLoading ? <span> (샘플 로딩…)</span> : null}
-        </p>
+        </div>
       ) : null}
-      {!musicXml ? <p>녹음 후 인식되면 여기에 오선보가 표시됩니다.</p> : null}
-      <div ref={containerRef} />
-    </section>
+      {!musicXml ? (
+        <p className="muted">녹음 후 인식되면 여기에 오선보가 표시됩니다.</p>
+      ) : null}
+      <div className="score-canvas" ref={containerRef} />
+    </div>
   )
 }

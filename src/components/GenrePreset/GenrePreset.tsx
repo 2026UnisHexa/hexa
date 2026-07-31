@@ -8,11 +8,15 @@ type Props = {
 
 export function GenrePreset({ value, onChange }: Props) {
   return (
-    <section>
-      <h2>4. 장르 프리셋</h2>
-      <label>
-        장르{' '}
+    <div className="panel">
+      <p className="muted">
+        장르 프리셋을 고르면 반주 패턴이 바뀝니다. step 5에서 함께 미리들을 수
+        있어요.
+      </p>
+      <div className="field">
+        <label htmlFor="genre-select">장르</label>
         <select
+          id="genre-select"
           value={value}
           onChange={(e) => onChange(e.target.value as GenreId)}
         >
@@ -22,7 +26,7 @@ export function GenrePreset({ value, onChange }: Props) {
             </option>
           ))}
         </select>
-      </label>
-    </section>
+      </div>
+    </div>
   )
 }

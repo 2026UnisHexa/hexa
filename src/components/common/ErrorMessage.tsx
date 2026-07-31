@@ -3,5 +3,9 @@ type Props = {
 }
 
 export function ErrorMessage({ message }: Props) {
-  return <p role="alert">{message}</p>
+  return (
+    <p className="alert" role="alert">
+      {message}
+    </p>
+  )
 }
