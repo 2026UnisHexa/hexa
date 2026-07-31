@@ -12,7 +12,10 @@ type AuthPageProps = {
   initialSignupOpen?: boolean
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(
+  /\/+$/,
+  '',
+)
 
 function BrandMark() {
   return (
@@ -36,6 +39,9 @@ function EyeIcon({ closed }: { closed: boolean }) {
 }
 
 async function requestAuth(path: 'login' | 'signup', loginId: string, password: string) {
+  if (!API_BASE_URL) {
+    throw new Error('API 주소(VITE_API_BASE_URL)가 설정되지 않았습니다.')
+  }
   const response = await fetch(`${API_BASE_URL}/${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
