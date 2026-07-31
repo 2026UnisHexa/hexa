@@ -1,5 +1,7 @@
 import type { MelodyNote } from '../types/midi'
 
+export const MAX_SUMMARY_NOTES = 24
+
 const NOTE_NAMES = [
   'C',
   'C#',
@@ -35,11 +37,17 @@ export function estimateTempoBpm(notes: MelodyNote[]): number {
   return Math.min(160, Math.max(60, bpm))
 }
 
+/** Notes sent to chord suggestion: min(actual length, 24). */
+export function melodySummaryNoteCount(notes: MelodyNote[]): number {
+  return Math.min(notes.length, MAX_SUMMARY_NOTES)
+}
+
 export function summarizeMelody(notes: MelodyNote[], tempoBpm: number): string {
   if (notes.length === 0) {
-    return 'empty melody, 4/4, tempo about 90'
+    return 'empty melody, 4/4, tempo about 90, noteCount 0'
   }
-  const names = notes.slice(0, 24).map((n) => midiToNoteName(n.pitchMidi))
+  const slice = notes.slice(0, MAX_SUMMARY_NOTES)
+  const names = slice.map((n) => midiToNoteName(n.pitchMidi))
   const joined = names.join('-')
-  return `${joined}, 4/4, tempo about ${tempoBpm}`
+  return `${joined}, 4/4, tempo about ${tempoBpm}, noteCount ${slice.length}`
 }

@@ -4,20 +4,48 @@ type Props = {
   onDownloadMusicXml: () => void
 }
 
+function FileIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9.5A1.5 1.5 0 0 1 5.5 20V5A1.5 1.5 0 0 1 7 3.5Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path d="M14 3.5V8h4.5" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  )
+}
+
 export function DownloadButtons({
   disabled,
   onDownloadMidi,
   onDownloadMusicXml,
 }: Props) {
   return (
-    <section>
-      <h2>5. 다운로드</h2>
-      <button type="button" onClick={onDownloadMidi} disabled={disabled}>
-        MIDI 다운로드
-      </button>{' '}
-      <button type="button" onClick={onDownloadMusicXml} disabled={disabled}>
-        MusicXML 다운로드
+    <>
+      <button
+        type="button"
+        className="download-card"
+        onClick={onDownloadMidi}
+        disabled={disabled}
+      >
+        <span className="download-card__icon">
+          <FileIcon />
+        </span>
+        MIDI
       </button>
-    </section>
+      <button
+        type="button"
+        className="download-card"
+        onClick={onDownloadMusicXml}
+        disabled={disabled}
+      >
+        <span className="download-card__icon">
+          <FileIcon />
+        </span>
+        MusicXML
+      </button>
+    </>
   )
 }

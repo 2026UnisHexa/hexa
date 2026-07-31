@@ -17,15 +17,16 @@ export function ListingSuccessModal({ open, price, onClose }: Props) {
   }, [open])
 
   return (
-    <dialog ref={ref} onClose={onClose}>
-      <h3>등록 완료</h3>
-      <p>
-        {price}원으로 등록된 것처럼 보이는 컨셉 데모입니다. 실제 결제는 Stripe
-        연동으로 확장 가능합니다.
+    <dialog ref={ref} className="modal" onClose={onClose}>
+      <h2>등록 완료</h2>
+      <p className="muted">
+        {price}원으로 등록된 것처럼 보이는 컨셉 데모입니다.
       </p>
-      <button type="button" onClick={onClose}>
-        닫기
-      </button>
+      <div className="modal__actions">
+        <button type="button" className="btn btn--primary" onClick={onClose}>
+          닫기
+        </button>
+      </div>
     </dialog>
   )
 }

@@ -1,5 +1,9 @@
 import type { ChordSuggestion, ChordVoicing } from '../types/chord'
-import { FALLBACK_CHORD_SUGGESTIONS } from './chordFallback'
+import {
+  fitChordsToLength,
+  getFallbackChordSuggestions,
+} from './chordFallback'
+import { MAX_SUMMARY_NOTES } from '../utils/melodySummary'
 
 function isChordVoicing(value: unknown): value is ChordVoicing {
   if (!value || typeof value !== 'object') return false
@@ -35,7 +39,27 @@ function extractJsonArray(text: string): unknown {
   }
 }
 
-export function parseChordSuggestions(raw: string): ChordSuggestion[] {
+function normalizeSuggestions(
+  suggestions: ChordSuggestion[],
+  noteCount: number,
+): ChordSuggestion[] {
+  const n = Math.min(Math.max(noteCount, 1), MAX_SUMMARY_NOTES)
+  return suggestions.slice(0, 3).map((s) => ({
+    ...s,
+    chords: fitChordsToLength(s.chords, n),
+  }))
+}
+
+function withFallback(reason: string, noteCount: number): ChordSuggestion[] {
+  const n = Math.min(Math.max(noteCount, 1), MAX_SUMMARY_NOTES)
+  console.log('[chords] source: fallback', { reason, noteCount: n })
+  return getFallbackChordSuggestions(n)
+}
+
+export function parseChordSuggestions(
+  raw: string,
+  noteCount: number,
+): ChordSuggestion[] {
   try {
     const parsed = extractJsonArray(raw)
     if (!Array.isArray(parsed)) {
@@ -45,26 +69,36 @@ export function parseChordSuggestions(raw: string): ChordSuggestion[] {
     if (valid.length === 0) {
       throw new Error('No valid chord suggestions')
     }
-    return valid.slice(0, 3)
+    const normalized = normalizeSuggestions(valid, noteCount)
+    console.log('[chords] source: openai-api', {
+      count: normalized.length,
+      noteCount,
+      chordLengths: normalized.map((s) => s.chords.length),
+      labels: normalized.map((s) => s.label),
+    })
+    return normalized
   } catch (err) {
     console.warn('[suggest-chords] JSON parse failed, using fallback', err)
-    return FALLBACK_CHORD_SUGGESTIONS
+    return withFallback('json-parse-failed', noteCount)
   }
 }
 
 /**
  * Ask the backend (/api/suggest-chords) for chord progressions.
  * Never calls OpenAI from the browser; API keys stay server-side.
- * On any failure, returns hardcoded fallback progressions.
+ * On any failure, returns hardcoded fallback progressions of length noteCount.
  */
 export async function suggestChordProgressions(
   melodySummary: string,
+  noteCount: number,
 ): Promise<ChordSuggestion[]> {
+  const n = Math.min(Math.max(noteCount, 1), MAX_SUMMARY_NOTES)
+  console.log('[chords] request', { melodySummary, noteCount: n })
   try {
     const res = await fetch('/api/suggest-chords', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ melodySummary }),
+      body: JSON.stringify({ melodySummary, noteCount: n }),
     })
     if (!res.ok) {
       const text = await res.text()
@@ -73,14 +107,26 @@ export async function suggestChordProgressions(
     const data = (await res.json()) as { raw?: string; suggestions?: unknown }
     if (Array.isArray(data.suggestions)) {
       const valid = data.suggestions.filter(isChordSuggestion)
-      if (valid.length > 0) return valid.slice(0, 3)
+      if (valid.length > 0) {
+        const normalized = normalizeSuggestions(valid, n)
+        console.log('[chords] source: openai-api', {
+          count: normalized.length,
+          noteCount: n,
+          chordLengths: normalized.map((s) => s.chords.length),
+          labels: normalized.map((s) => s.label),
+        })
+        return normalized
+      }
     }
     if (typeof data.raw === 'string') {
-      return parseChordSuggestions(data.raw)
+      return parseChordSuggestions(data.raw, n)
     }
     throw new Error('Unexpected API response shape')
   } catch (err) {
     console.warn('[suggest-chords] request failed, using fallback', err)
-    return FALLBACK_CHORD_SUGGESTIONS
+    return withFallback(
+      err instanceof Error ? err.message : 'request-failed',
+      n,
+    )
   }
 }

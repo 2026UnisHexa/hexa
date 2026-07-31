@@ -3,11 +3,12 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 export function validateSuggestChordsBody(
   body: unknown,
 ):
-  | { ok: true; melodySummary: string }
+  | { ok: true; melodySummary: string; noteCount: number }
   | { ok: false; status: number; error: string }
 
 export function callOpenAIForChords(
   melodySummary: string,
+  noteCount: number,
   apiKey: string,
 ): Promise<string>
 
