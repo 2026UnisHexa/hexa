@@ -13,7 +13,10 @@ import { ChordSuggestions } from './components/ChordSuggestions/ChordSuggestions
 import { GenrePreset } from './components/GenrePreset/GenrePreset'
 import { DownloadButtons } from './components/Download/DownloadButtons'
 import { ListForSaleButton } from './components/Marketplace/ListForSaleButton'
-import { PriceInputModal } from './components/Marketplace/PriceInputModal'
+import {
+  PriceInputModal,
+  type ListingAudioMode,
+} from './components/Marketplace/PriceInputModal'
 import { ListingSuccessModal } from './components/Marketplace/ListingSuccessModal'
 import { MyPageView } from './components/MyPage/MyPageView'
 import { VoiceLyricsView } from './components/VoiceMemo/VoiceLyricsView'
@@ -200,6 +203,8 @@ export default function App() {
   const [successOpen, setSuccessOpen] = useState(false)
   const [listingTitle, setListingTitle] = useState('나의 허밍 멜로디')
   const [price, setPrice] = useState('1000')
+  const [listingAudioMode, setListingAudioMode] =
+    useState<ListingAudioMode>('composition')
   const [lastListedTitle, setLastListedTitle] = useState('나의 허밍 멜로디')
   const [listingSaving, setListingSaving] = useState(false)
   const [listingError, setListingError] = useState<string | null>(null)
@@ -308,12 +313,14 @@ export default function App() {
     setListingError(null)
 
     try {
-      if (!selectedSuggestion) {
+      if (listingAudioMode === 'composition' && !selectedSuggestion) {
         throw new Error('코드 진행을 먼저 선택해 주세요.')
       }
       const renderedAudio = await renderCompositionAudio(
         pitch.notes,
-        selectedSuggestion.chords,
+        listingAudioMode === 'composition'
+          ? (selectedSuggestion?.chords ?? [])
+          : [],
         genrePreset,
         selectedInstrument,
       )
@@ -321,7 +328,10 @@ export default function App() {
         title: trimmed,
         price: parsedPrice,
         genreLabel: genrePreset.label,
-        chordLabel: selectedSuggestion?.label ?? null,
+        chordLabel:
+          listingAudioMode === 'composition'
+            ? (selectedSuggestion?.label ?? null)
+            : null,
         tempoBpm,
         noteCount: pitch.notes.length,
         audioBlob: renderedAudio,
@@ -744,10 +754,12 @@ export default function App() {
         open={priceOpen}
         title={listingTitle}
         price={price}
+        audioMode={listingAudioMode}
         saving={listingSaving}
         error={listingError}
         onTitleChange={setListingTitle}
         onPriceChange={setPrice}
+        onAudioModeChange={setListingAudioMode}
         onCancel={() => {
           if (listingSaving) return
           setListingError(null)
