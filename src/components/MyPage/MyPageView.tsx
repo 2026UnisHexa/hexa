@@ -268,11 +268,11 @@ export function MyPageView({
                           삭제
                         </button>
                       </div>
-                      <p className="muted mypage__preview-hint">
-                        {item.audioUrl
-                          ? '서버에 저장된 녹음 파일을 재생합니다.'
-                          : '데모 미리듣기 (실제 녹음 파일 없음)'}
-                      </p>
+                      {item.audioUrl ? (
+                        <p className="muted mypage__preview-hint">
+                          등록된 음원을 재생합니다.
+                        </p>
+                      ) : null}
                     </div>
                   </li>
                 )

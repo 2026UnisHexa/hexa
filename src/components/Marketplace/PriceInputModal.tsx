@@ -1,13 +1,17 @@
 import { useEffect, useRef } from 'react'
 
+export type ListingAudioMode = 'melody' | 'composition'
+
 type Props = {
   open: boolean
   title: string
   price: string
+  audioMode: ListingAudioMode
   saving?: boolean
   error?: string | null
   onTitleChange: (value: string) => void
   onPriceChange: (value: string) => void
+  onAudioModeChange: (value: ListingAudioMode) => void
   onSubmit: () => void
   onCancel: () => void
 }
@@ -16,10 +20,12 @@ export function PriceInputModal({
   open,
   title,
   price,
+  audioMode,
   saving = false,
   error = null,
   onTitleChange,
   onPriceChange,
+  onAudioModeChange,
   onSubmit,
   onCancel,
 }: Props) {
@@ -43,7 +49,7 @@ export function PriceInputModal({
       >
         <h2>마켓플레이스 등록</h2>
         <p className="muted">
-          서버(DB + Storage)에 녹음 파일을 올리고, 내 작품 목록에 추가합니다.
+          서버에 음원 파일을 올리고 내 작품 목록에 추가합니다.
         </p>
         <div className="field">
           <label htmlFor="listing-title">제목</label>
@@ -70,6 +76,20 @@ export function PriceInputModal({
             required
             disabled={saving}
           />
+        </div>
+        <div className="field">
+          <label htmlFor="listing-audio-mode">등록할 음원</label>
+          <select
+            id="listing-audio-mode"
+            value={audioMode}
+            onChange={(e) =>
+              onAudioModeChange(e.target.value as ListingAudioMode)
+            }
+            disabled={saving}
+          >
+            <option value="melody">멜로디만</option>
+            <option value="composition">멜로디 + 반주</option>
+          </select>
         </div>
         {error ? (
           <p className="alert" role="alert">
