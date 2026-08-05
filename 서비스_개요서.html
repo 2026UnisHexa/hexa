@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hexa(흥얼) 서비스 개요</title>
+  <style>
+    @page { size: A4; margin: 22mm 20mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+      font-size: 11pt;
+      line-height: 1.65;
+      color: #1a1a1a;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 8px;
+    }
+    h1 {
+      font-size: 20pt;
+      font-weight: 700;
+      margin: 0 0 1.4em;
+      letter-spacing: -0.02em;
+    }
+    h2 {
+      font-size: 13pt;
+      font-weight: 700;
+      margin: 1.6em 0 0.55em;
+      padding-bottom: 0.25em;
+      border-bottom: 1px solid #ddd;
+    }
+    p { margin: 0.45em 0; }
+    ul, ol { margin: 0.4em 0 0.6em; padding-left: 1.3em; }
+    li { margin: 0.25em 0; }
+    li strong { font-weight: 600; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.7em 0 1em;
+      font-size: 10.5pt;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 0.45em 0.6em;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #f5f5f5; font-weight: 600; width: 28%; }
+  </style>
+</head>
+<body>
+  <h1>Hexa(흥얼) 서비스 개요</h1>
+
+  <h2>한 줄로</h2>
+  <p>허밍을 녹음하면 악보로 바꾸고, 코드·반주까지 붙여볼 수 있는 웹 작곡 보조 도구다.</p>
+
+  <h2>왜 만들었나</h2>
+  <p>악상이 떠올라도 바로 악보로 옮기기 어렵다. 악기 없이도 “음만 흥얼거려 두고”, 나중에 코드를 고르고 장르 느낌만 입혀 미리 들어보게 하려는 목적이다.<br />
+  완성된 DAW를 대체하려는 서비스가 아니라, 아이디어를 빠르게 잡아내는 쪽에 가깝다.</p>
+
+  <h2>누가 쓰나</h2>
+  <ul>
+    <li>멜로디는 있는데 화성·반주 구성이 막히는 사람</li>
+    <li>악보 입력보다 입으로 먼저 남기고 싶은 사람</li>
+    <li>짧은 루프·스케치를 MIDI/MusicXML로 가져가고 싶은 사람</li>
+  </ul>
+
+  <h2>무엇을 할 수 있나</h2>
+  <ol>
+    <li><strong>녹음</strong> — 브라우저에서 허밍을 녹음한다.</li>
+    <li><strong>멜로디 인식</strong> — 잡음을 줄이고, Spotify Basic Pitch로 음높이를 잡아 MIDI 노트·오선보로 보여 준다. 짧은 음은 묶고, 조성에 맞게 살짝 보정한다.</li>
+    <li><strong>코드 고르기</strong> — 멜로디에 맞춰 코드 진행 후보를 최대 3개 제안한다. 마음에 드는 걸 고르고 미리 들을 수 있다. (제안이 실패하면 기본 진행으로 대체)</li>
+    <li><strong>장르 반주</strong> — 팝 / 발라드 / 재즈 프리셋으로 반주를 붙인 뒤 멜로디와 같이 재생한다.</li>
+    <li><strong>내보내기</strong> — 원본 멜로디, 또는 코드·장르가 반영된 결과를 MIDI · MusicXML로 받는다.</li>
+    <li><strong>등록 · 둘러보기</strong> — 회원가입/로그인 후 작품을 올리고, 마켓·마이페이지에서 목록을 본다. 결제·실제 판매 플로우는 아직 없다. 데모·프로토타입 단계다.</li>
+  </ol>
+  <p>부가로 음성 메모를 텍스트로 옮기거나, 가사를 받아보는 기능도 있다.</p>
+
+  <h2>대략적인 이용 흐름</h2>
+  <p>홈에서 새로 만들기를 누르면<br />
+  녹음 → 악보 확인 → 코드 선택 → 장르·미리듣기 → 다운로드 / 마켓 등록<br />
+  순서로 진행한다.<br />
+  홈에서 마켓을 둘러보거나, 마이페이지에서 내 작품과 프로필을 볼 수 있다.</p>
+
+  <h2>구성</h2>
+  <table>
+    <thead>
+      <tr><th>구분</th><th>내용</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>프론트</td><td>React + Vite, Vercel</td></tr>
+      <tr><td>백엔드</td><td>FastAPI (가입·로그인·음원 메타 등), Render</td></tr>
+      <tr><td>피치 인식</td><td>Basic Pitch, 브라우저에서 실행</td></tr>
+      <tr><td>코드·가사·음성→텍스트</td><td>OpenAI API (서버에서만 호출, 키는 프론트에 없음)</td></tr>
+      <tr><td>악보·재생</td><td>OpenSheetMusicDisplay, Tone.js</td></tr>
+    </tbody>
+  </table>
+  <p>피치 인식은 기기 안에서 돌아가고, 코드/가사/받아쓰기는 서버 API를 탄다.</p>
+
+  <h2>지금 단계에서의 한계</h2>
+  <ul>
+    <li>결제·수익 정산 없음</li>
+    <li>마켓은 컨셉 데모 성격이 큼</li>
+    <li>DAW 수준의 편집·멀티트랙·실시간 협업은 범위 밖</li>
+    <li>인식 품질은 녹음 환경·허밍 정확도에 따라 들쭉날쭉할 수 있음</li>
+  </ul>
+
+  <h2>정리</h2>
+  <p>Hexa는 “흥얼거림 → 악보 → 코드·반주 스케치 → 파일로 가져가기”까지를 브라우저 한 흐름으로 묶어 둔 서비스다.<br />
+  작곡을 대신해 주기보다, 입에서 나온 멜로디를 작업 가능한 형태로 빨리 올려 주는 쪽에 초점을 맞췄다.</p>
+</body>
+</html>
