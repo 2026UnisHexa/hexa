@@ -62,7 +62,6 @@ function ListingCard({
         >
           {loading && !playing ? '준비 중…' : playing ? '정지' : '미리듣기'}
         </button>
-        <span className="market-card__hint">데모 음원 (실제 녹음 없음)</span>
       </div>
     </article>
   )
@@ -106,8 +105,7 @@ export function MarketplaceView({ listings, currentLoginId }: Props) {
     <section className="marketplace" data-node-id="6:73">
       <h1 className="marketplace__title">마켓플레이스</h1>
       <p className="muted">
-        카드를 눌러 데모 미리듣기를 재생할 수 있어요. (실제 녹음 파일은 없고,
-        장르·템포 기반 합성 미리듣기입니다)
+        카드에서 등록된 음원을 미리 들어볼 수 있어요.
       </p>
 
       <h2 className="marketplace__section-title">내가 올린 것 ({mine.length})</h2>

@@ -13,7 +13,7 @@ export const INSTRUMENT_OPTIONS: {
   { id: 'guitar-acoustic', label: '어쿠스틱 기타' },
 ]
 
-type SamplePreset = {
+export type SamplePreset = {
   urls: Record<string, string>
   baseUrl: string
 }
@@ -40,6 +40,14 @@ const GUITAR_PRESET: SamplePreset = {
   },
   baseUrl:
     'https://nbrosowsky.github.io/tonejs-instruments/samples/guitar-acoustic/',
+}
+
+export function getInstrumentSamplePreset(
+  id: InstrumentId,
+): SamplePreset | null {
+  if (id === 'piano') return PIANO_PRESET
+  if (id === 'guitar-acoustic') return GUITAR_PRESET
+  return null
 }
 
 const cache = new Map<InstrumentId, PlayableInstrument>()
